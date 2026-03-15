@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FrameFlow — All-in-one app for product photographers</title>
+  <meta name="description"
+    content="FrameFlow is the all-in-one business app for product photographers. Manage files, share with clients, send invoices, and collect payment — in one simple place." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+
+  <!-- ==================== NAV ==================== -->
+  <nav id="main-nav">
+    <div class="nav-logo">
+      <div class="nav-logo-icon">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"
+          stroke-linecap="round" stroke-linejoin="round">
+          <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
+          <path d="M14 2v4a2 2 0 0 0 2 2h4" />
+          <path d="M10 12a1 1 0 0 0-1 1v1a1 1 0 0 1-1 1 1 1 0 0 1 1 1v1a1 1 0 0 0 1 1" />
+          <path d="M14 18a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1 1 1 0 0 1-1-1v-1a1 1 0 0 0-1-1" />
+        </svg>
+      </div>
+      FrameFlow
+    </div>
+    <div class="nav-right">
+      <a href="#features" class="nav-link">Features</a>
+      <a href="#workflow" class="nav-link">Workflow</a>
+      <a href="/login" class="nav-link">Log in</a>
+      <a href="/create-account" class="btn-primary">Get started</a>
+    </div>
+  </nav>
+
+
+  <!-- ==================== HERO ==================== -->
+  <section class="hero">
+
+    <h1 class="hero-title">
+      Everything you need for
+      <br /><em>your photography business.</em>
+    </h1>
+
+    <p class="hero-sub">
+      From client brief to final payment —
+      FrameFlow handles the business so you
+      can stay focused on the work.
+    </p>
+
+    <div class="hero-cta">
+      <a href="/create-account" class="btn-secondary">Sign up for $5/month</a>
+      <span class="hero-price-note">No contracts. Cancel anytime.</span>
+    </div>
+
+    <!-- Hero Dashboard Mockup -->
+    <div class="hero-mockup-wrap reveal" style="transition-delay:0.1s">
+      <div class="hero-mockup-chrome">
+        <!-- App bar -->
+        <div class="hero-dash-header">
+          <div class="hero-dash-search">
+            <div class="hero-dash-avatar">
+              <img src="../public/profile-photo-v2.jpg" alt="Profile" onerror="this.style.background='#e8e7e5'" />
+            </div>
+            <span class="hero-dash-search-text">Search everything</span>
+          </div>
+
+          <!-- Center tabs pill -->
+          <div class="chrome-tab-pill">
+            <span class="chrome-tab active">Files</span>
+            <span class="chrome-tab">Clients</span>
+            <span class="chrome-tab">Payment</span>
+            <span class="chrome-tab">Settings</span>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:8px">
+            <button class="hero-dash-storage">
+              <svg style="display:inline;margin-right:4px" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect width="18" height="14" x="3" y="5" rx="3" />
+                <path d="M10 5v14" />
+              </svg>
+              Storage
+            </button>
+          </div>
+        </div>
+
+        <!-- Dashboard body -->
+        <div class="hero-dash-body">
+          <!-- Main masonry -->
+          <div class="hero-dash-main">
+            <div class="hero-masonry">
+              <!-- Col 1 -->
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <div class="hero-cell tall patch-a" style="border-radius:10px;position:relative;">
+                  <div
+                    style="position:absolute;top:8px;left:8px;width:16px;height:16px;border-radius:50%;background:#1A1A1A;display:flex;align-items:center;justify-content:center;">
+                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#FAFAF8" stroke-width="3"
+                      stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  </div>
+                </div>
+                <div class="hero-cell sq patch-e" style="border-radius:10px;"></div>
+              </div>
+              <!-- Col 2 -->
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <div class="hero-cell sq patch-f" style="border-radius:10px;"></div>
+                <div class="hero-cell tall patch-b" style="border-radius:10px;"></div>
+              </div>
+              <!-- Col 3 -->
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <div class="hero-cell mid patch-c" style="border-radius:10px;"></div>
+                <div class="hero-cell sq patch-d" style="border-radius:10px;"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Center fixed upload button -->
+          <div class="hero-upload-fixed">
+            <button class="hero-upload-btn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"
+                stroke-linejoin="round" aria-hidden="true">
+                <path d="M4 17v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
+                <polyline points="16 11 12 7 8 11" />
+                <line x1="12" y1="7" x2="12" y2="21" />
+              </svg>
+              <span>Upload - U</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ==================== FEATURES ==================== -->
+  <div id="features">
+
+    <!-- ---- 1. Files ---- -->
+    <section class="feature">
+      <div class="feature-copy reveal">
+        <span class="feature-tag">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+          </svg>
+          Files
+        </span>
+        <h2 class="feature-heading">
+          all your work.<br />
+          <em>one place.</em>
+        </h2>
+        <p class="feature-body">
+          Upload, organise, and store every image from every shoot in a single, searchable library. No more Dropbox
+          links, Drive folders, or email chains.
+        </p>
+        <div class="feature-details">
+          <div class="feature-detail"><span class="feature-detail-dot"></span>Drag-and-drop or paste directly from
+            clipboard</div>
+          <div class="feature-detail"><span class="feature-detail-dot"></span>Masonry grid with adjustable column view
+          </div>
+          <div class="feature-detail"><span class="feature-detail-dot"></span>Lasso-select and batch delete</div>
+        </div>
+      </div>
+
+      <div class="feature-visual reveal" style="transition-delay:0.1s;padding:0;background:transparent;border:none;">
+        <div class="app-chrome" style="width:100%;">
+          <div class="app-chrome-bar">
+            <div class="chrome-dots">
+              <div class="chrome-dot"></div>
+              <div class="chrome-dot"></div>
+              <div class="chrome-dot"></div>
+            </div>
+            <div class="chrome-tab-pill">
+              <span class="chrome-tab active">Files</span>
+              <span class="chrome-tab">Clients</span>
+              <span class="chrome-tab">Payment</span>
+            </div>
+          </div>
+          <!-- Masonry -->
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:12px;">
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <div style="aspect-ratio:2/3;border-radius:8px;background:#e8e4de;position:relative;">
+                <div
+                  style="position:absolute;top:6px;left:6px;width:14px;height:14px;border-radius:50%;background:#1A1A1A;display:flex;align-items:center;justify-content:center;">
+                  <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="#FAFAF8" stroke-width="3.5"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                </div>
+              </div>
+              <div style="aspect-ratio:1;border-radius:8px;background:#ebe8e3;"></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <div style="aspect-ratio:1;border-radius:8px;background:#dedad3;"></div>
+              <div style="aspect-ratio:3/5;border-radius:8px;background:#d4cfc8;"></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <div style="aspect-ratio:3/4;border-radius:8px;background:#cfcbc3;"></div>
+              <div style="aspect-ratio:1;border-radius:8px;background:#c9c5bd;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="section-divider"></div>
+
+    <!-- ---- 2. Clients ---- -->
+    <section class="feature reverse">
+      <div class="feature-copy reveal">
+        <span class="feature-tag">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+            <circle cx="9" cy="7" r="4" />
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+          </svg>
+          Clients
+        </span>
+        <h2 class="feature-heading">
+          one link per client.<br />
+          <em>no login required.</em>
+        </h2>
+        <p class="feature-body">
+          Create a client in seconds, assign their photos, and share a private gallery link. Your client sees a clean,
+          branded view — no account, no app, no friction.
+        </p>
+        <div class="feature-details">
+          <div class="feature-detail"><span class="feature-detail-dot"></span>Unique share link per client, instantly
+            copyable</div>
+          <div class="feature-detail"><span class="feature-detail-dot"></span>Client sees beautifully laid out gallery
+          </div>
+          <div class="feature-detail"><span class="feature-detail-dot"></span>Organised by client, not by folder</div>
+        </div>
+      </div>
+
+      <div class="feature-visual reveal"
+        style="transition-delay:0.1s;padding:24px;gap:12px;flex-direction:column;">
+        <div class="app-chrome" style="width:100%;">
+          <div class="app-chrome-bar">
+            <div class="chrome-dots">
+              <div class="chrome-dot"></div>
+              <div class="chrome-dot"></div>
+              <div class="chrome-dot"></div>
+            </div>
+            <div class="chrome-tab-pill">
+              <span class="chrome-tab">Files</span>
+              <span class="chrome-tab active">Clients</span>
+              <span class="chrome-tab">Payment</span>
+            </div>
+            <div></div>
+          </div>
+          <!-- Client cards grid -->
+          <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;padding:12px;">
+            <!-- Client card 1 -->
+            <div class="client-card">
+              <div class="client-card-fan">
+                <div class="fan-img patch-a"></div>
+                <div class="fan-img patch-b"></div>
+                <div class="fan-img patch-c"></div>
+              </div>
+              <div style="text-align:center;font-size:12px;font-weight:500;color:#1A1A1A;">Adidas Campaign</div>
+            </div>
+            <!-- Client card 2 -->
+            <div class="client-card">
+              <div class="client-card-fan">
+                <div class="fan-img patch-e"></div>
+                <div class="fan-img patch-f"></div>
+                <div class="fan-img patch-g"></div>
+              </div>
+              <div style="text-align:center;font-size:12px;font-weight:500;color:#1A1A1A;">Zara Editorial</div>
+            </div>
+          </div>
+          <!-- Share info strip -->
+          <div
+            style="padding:8px 12px 12px;background:#F3F3F0;border-top:1px solid #E5E5E3;display:flex;align-items:center;justify-content:space-between;">
+            <span style="font-size:11px;color:#8A8A8A;">frameflow.app/<strong
+                style="color:#1A1A1A;">adidas-campaign</strong></span>
+            <div
+              style="display:flex;align-items:center;gap:4px;background:#1A1A1A;color:#FAFAF8;border-radius:100px;padding:4px 10px;font-size:11px;cursor:pointer;">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+                <polyline points="16 6 12 2 8 6" />
+                <line x1="12" y1="2" x2="12" y2="15" />
+              </svg>
+              Share
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="section-divider"></div>
+
+    <!-- ---- 3. Gallery (client view) ---- -->
+    <section class="feature">
+      <div class="feature-copy reveal">
+        <span class="feature-tag">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <rect width="18" height="18" x="3" y="3" rx="2" />
+            <path d="M3 9h18" />
+            <path d="M9 21V9" />
+          </svg>
+          Gallery View
+        </span>
+        <h2 class="feature-heading">
+          your client selects.<br />
+          <em>you deliver.</em>
+        </h2>
+        <p class="feature-body">
+          Clients browse, favourite the shots they love, and send feedback — all inside the shared gallery. You know
+          exactly what to deliver. No back-and-forth emails.
+        </p>
+        <div class="feature-details">
+          <div class="feature-detail"><span class="feature-detail-dot"></span>Full-screen image detail with
+            heart/favourite</div>
+          <div class="feature-detail"><span class="feature-detail-dot"></span>Client can select their preferred shots
+          </div>
+          <div class="feature-detail"><span class="feature-detail-dot"></span>Shareable link works on any device, no
+            login</div>
+        </div>
+      </div>
+
+      <div class="feature-visual reveal" style="transition-delay:0.1s;padding:24px;">
+        <div class="app-chrome" style="width:100%;">
+          <div class="app-chrome-bar">
+            <div class="chrome-dots">
+              <div class="chrome-dot"></div>
+              <div class="chrome-dot"></div>
+              <div class="chrome-dot"></div>
+            </div>
+            <div style="font-size:11px;color:#8A8A8A;">frameflow.app/share/tk_...</div>
+            <div></div>
+          </div>
+          <!-- Gallery grid -->
+          <div class="share-gallery-mock">
+            <div class="share-header">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <div class="share-avatar"></div>
+                <span style="font-size:12px;font-weight:500;color:#1A1A1A;">Adidas Campaign</span>
+              </div>
+              <span style="font-size:11px;color:#8A8A8A;">12 images</span>
+            </div>
+            <div class="share-gallery-grid">
+              <div class="share-cell patch-a">
+                <div class="share-heart">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="#e11d48" stroke="#e11d48" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path
+                      d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                  </svg>
+                </div>
+              </div>
+              <div class="share-cell patch-b"></div>
+              <div class="share-cell patch-e">
+                <div class="share-heart">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="#e11d48" stroke="#e11d48" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path
+                      d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                  </svg>
+                </div>
+              </div>
+              <div class="share-cell patch-f"></div>
+              <div class="share-cell patch-c">
+                <div class="share-heart">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="#e11d48" stroke="#e11d48" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path
+                      d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                  </svg>
+                </div>
+              </div>
+              <div class="share-cell patch-d"></div>
+              <div class="share-cell patch-g"></div>
+              <div class="share-cell patch-h"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="section-divider"></div>
+
+    <!-- ---- 4. Invoices / Offers ---- -->
+    <section class="feature reverse">
+      <div class="feature-copy reveal">
+        <span class="feature-tag">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+            <line x1="16" y1="13" x2="8" y2="13" />
+            <line x1="16" y1="17" x2="8" y2="17" />
+            <polyline points="10 9 9 9 8 9" />
+          </svg>
+          Invoices & Offers
+        </span>
+        <h2 class="feature-heading">
+          send the offer<br />
+          <em>before the negotiation starts.</em>
+        </h2>
+        <p class="feature-body">
+          Create an invoice in seconds. Set the amount, due date, and message — FrameFlow delivers it. No separate
+          invoicing tool. No switching tabs.
+        </p>
+        <div class="feature-details">
+          <div class="feature-detail"><span class="feature-detail-dot"></span>Invoice creation with client select,
+            amount &amp; due date</div>
+          <div class="feature-detail"><span class="feature-detail-dot"></span>Email delivery built in</div>
+          <div class="feature-detail"><span class="feature-detail-dot"></span>Track sent vs paid in one view</div>
+        </div>
+      </div>
+
+      <div class="feature-visual reveal" style="transition-delay:0.1s;padding:24px;">
+        <!-- Invoice modal mock -->
+        <div class="invoice-mock" style="width:100%;max-width:340px;margin:0 auto;">
+          <div class="invoice-header">
+            <h4>New Invoice</h4>
+            <span class="invoice-back">Back</span>
+          </div>
+          <div class="invoice-body">
+            <div class="invoice-field">
+              <span class="invoice-label">Client</span>
+              <div class="invoice-input filled" style="display:flex;align-items:center;justify-content:space-between;">
+                <span>Adidas Campaign</span>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#8A8A8A" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </div>
+            </div>
+            <div class="invoice-field">
+              <span class="invoice-label">Amount</span>
+              <div class="invoice-input filled" style="display:flex;align-items:center;">$ 2,400.00</div>
+            </div>
+            <div class="invoice-field">
+              <span class="invoice-label">Due Date</span>
+              <div class="invoice-input" style="display:flex;align-items:center;color:#8A8A8A;">30 Mar 2026</div>
+            </div>
+            <div class="invoice-field">
+              <span class="invoice-label">Message</span>
+              <div
+                style="padding:8px 10px;border-radius:6px;border:1px solid #E5E5E3;font-size:12px;color:#8A8A8A;min-height:48px;">
+                Thanks for doing business</div>
+            </div>
+          </div>
+          <div class="invoice-footer">
+            <button class="invoice-send-btn">Send Invoice</button>
+            <div class="invoice-icon-btn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <polyline points="19 12 12 19 5 12" />
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="section-divider"></div>
+
+    <!-- ---- 5. Payments ---- -->
+    <section class="feature">
+      <div class="feature-copy reveal">
+        <span class="feature-tag">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <rect width="20" height="14" x="2" y="5" rx="2" />
+            <line x1="2" y1="10" x2="22" y2="10" />
+          </svg>
+          Payments
+        </span>
+        <h2 class="feature-heading">
+          know exactly<br />
+          <em>what you've earned.</em>
+        </h2>
+        <p class="feature-body">
+          Track what's been sent, what's been paid, and what's coming. Your financial overview lives right next to your
+          work — no separate accounting tab.
+        </p>
+        <div class="feature-details">
+          <div class="feature-detail"><span class="feature-detail-dot"></span>Monthly and yearly revenue at a glance
+          </div>
+          <div class="feature-detail"><span class="feature-detail-dot"></span>Sent and paid invoice ledger</div>
+          <div class="feature-detail"><span class="feature-detail-dot"></span>Resend overdue invoices in one click</div>
+        </div>
+      </div>
+
+      <div class="feature-visual reveal" style="transition-delay:0.1s;padding:24px;">
+        <div class="app-chrome" style="width:100%;">
+          <div class="app-chrome-bar">
+            <div class="chrome-dots">
+              <div class="chrome-dot"></div>
+              <div class="chrome-dot"></div>
+              <div class="chrome-dot"></div>
+            </div>
+            <div class="chrome-tab-pill">
+              <span class="chrome-tab">Files</span>
+              <span class="chrome-tab">Clients</span>
+              <span class="chrome-tab active">Payment</span>
+            </div>
+            <div></div>
+          </div>
+          <div class="payment-mock">
+            <!-- Metrics -->
+            <div class="payment-metrics">
+              <div class="payment-metric">
+                <div class="payment-metric-label">Coming</div>
+                <div class="payment-metric-value">$2,400</div>
+              </div>
+              <div class="payment-metric">
+                <div class="payment-metric-label">Mar</div>
+                <div class="payment-metric-value">$4,800</div>
+              </div>
+              <div class="payment-metric">
+                <div class="payment-metric-label">2026</div>
+                <div class="payment-metric-value">$14,200</div>
+              </div>
+            </div>
+            <!-- Sent -->
+            <div class="payment-section-head">
+              <span class="payment-section-title">Sent</span>
+              <div class="payment-section-line"></div>
+            </div>
+            <div class="payment-row">
+              <span class="payment-row-name">Adidas Campaign</span>
+              <div class="payment-row-actions">
+                <span class="payment-row-action">Resend</span>
+                <span class="payment-row-amount">$2,400</span>
+              </div>
+            </div>
+            <!-- Paid -->
+            <div class="payment-section-head" style="margin-top:8px;">
+              <span class="payment-section-title">Paid</span>
+              <div class="payment-section-line"></div>
+            </div>
+            <div class="payment-row">
+              <span class="payment-row-name">Zara Editorial</span>
+              <div class="payment-row-actions">
+                <span class="payment-row-action" style="color:#8A8A8A;font-size:10px;">14 Mar 26</span>
+                <span class="payment-row-amount">$4,800</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div><!-- end #features -->
+
+
+  <!-- ==================== FINAL CTA ==================== -->
+  <section class="final-cta" style="border-top:1px solid var(--border);margin-top:48px;">
+    <div class="final-cta-logo reveal">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"
+        stroke-linecap="round" stroke-linejoin="round">
+        <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
+        <path d="M14 2v4a2 2 0 0 0 2 2h4" />
+        <path d="M10 12a1 1 0 0 0-1 1v1a1 1 0 0 1-1 1 1 1 0 0 1 1 1v1a1 1 0 0 0 1 1" />
+        <path d="M14 18a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1 1 1 1 0 0 1-1-1v-1a1 1 0 0 0-1-1" />
+      </svg>
+    </div>
+
+    <h2 class="final-cta-title reveal">
+      everything you need to<br />
+      <em>grow your photography business</em><br />in one simple app.
+    </h2>
+
+    <p class="final-cta-sub reveal">$5/month. Cancel anytime.</p>
+
+    <a href="/create-account" class="btn-secondary reveal">Sign up free</a>
+  </section>
+
+
+  <!-- ==================== FOOTER ==================== -->
+  <footer>
+    <span class="footer-left">© 2026 FrameFlow. All rights reserved.</span>
+    <div class="footer-right">
+      <a href="#" class="footer-link">Privacy</a>
+      <a href="#" class="footer-link">Terms</a>
+      <a href="#" class="footer-link">Support</a>
+    </div>
+  </footer>
+
+
+  <!-- ==================== JS ==================== -->
+  <script>
+    // Scroll-based nav blur
+    const nav = document.getElementById('main-nav');
+    window.addEventListener('scroll', () => {
+      nav.classList.toggle('scrolled', window.scrollY > 20);
+    }, { passive: true });
+
+    // IntersectionObserver — blur-fade-in on scroll
+    const reveals = document.querySelectorAll('.reveal');
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+          // Don't unobserve — keep reveal class for re-entry (optional: add unobserve for perf)
+        }
+      });
+    }, {
+      threshold: 0.12,
+      rootMargin: '0px 0px -40px 0px'
+    });
+    reveals.forEach(el => observer.observe(el));
+  </script>
+
+</body>
+
+</html>

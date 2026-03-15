@@ -41,7 +41,18 @@ export default function DashboardTabs({ activeTab }: DashboardTabsProps) {
     const { selectionBox } = useLassoSelection(containerRef, selectedIds, setSelectedIds);
     const [isInvoiceModalOpen, setInvoiceModalOpen] = useState(false);
     const [isClientModalOpen, setClientModalOpen] = useState(false);
+    const [colCount, setColCount] = useState(4);
+    const [isGridTransitioning, setIsGridTransitioning] = useState(false);
     const { signOut } = useAuth();
+
+    const handleColChange = (n: number) => {
+        if (n === colCount) return;
+        setIsGridTransitioning(true);
+        setTimeout(() => {
+            setColCount(n);
+            setIsGridTransitioning(false);
+        }, 220);
+    };
 
     // Settings sub-navigation state
     const [settingsTab, setSettingsTab] = useState<SettingsTab>("Account");
@@ -327,8 +338,14 @@ export default function DashboardTabs({ activeTab }: DashboardTabsProps) {
                         </div>
                     ) : activeTab === "Files" && files.length > 0 && isLoaded ? (
                         <div
-                            className="columns-2 md:columns-3 lg:columns-4 gap-[24px] space-y-[24px] animate-blur-fade-in"
-                        >
+                            className="gap-[24px] space-y-[24px]"
+                            style={{
+                                columnCount: colCount,
+                                opacity: isGridTransitioning ? 0 : 1,
+                                filter: isGridTransitioning ? 'blur(8px)' : 'blur(0px)',
+                                transform: isGridTransitioning ? 'scale(0.99)' : 'scale(1)',
+                                transition: 'opacity 0.22s ease, filter 0.22s ease, transform 0.22s ease',
+                            }}>
                             {files.map((file) => {
                                 const isSelected = selectedIds.has(file.id);
 
@@ -679,20 +696,32 @@ export default function DashboardTabs({ activeTab }: DashboardTabsProps) {
                                         <div className="flex flex-col gap-[16px]">
                                             <h3 className="text-foreground" style={{ fontSize: "16px", fontWeight: 600 }}>Account Actions</h3>
                                             <div className="flex flex-col items-start gap-[12px]">
-                                                <button className="flex items-center gap-[8px] h-[40px] px-[16px] rounded-[8px] border border-border bg-background hover:bg-muted text-foreground text-[14px] font-medium transition-colors cursor-pointer">
-                                                    <Download size={16} /> Export all Data
-                                                </button>
-                                                <button 
+                                                {/* 1. Logout */}
+                                                <button
                                                     onClick={() => signOut()}
                                                     className="flex items-center gap-[8px] h-[40px] px-[16px] rounded-[8px] border border-border bg-background hover:bg-muted text-foreground text-[14px] font-medium transition-colors cursor-pointer"
                                                 >
                                                     <LogOut size={16} /> Logout
                                                 </button>
-                                                <button className="flex items-center gap-[8px] h-[40px] px-[16px] rounded-[8px] border border-destructive/20 bg-destructive/5 hover:bg-destructive/10 text-destructive text-[14px] font-medium transition-colors cursor-pointer">
-                                                    <Trash2 size={16} /> Delete Account
-                                                </button>
-                                                <button className="flex items-center gap-[8px] h-[40px] px-[16px] rounded-[8px] bg-foreground text-background hover:opacity-90 text-[14px] font-medium transition-colors cursor-pointer mt-[8px]">
+                                                {/* 2. Connect for support */}
+                                                <button className="flex items-center gap-[8px] h-[40px] px-[16px] rounded-[8px] bg-foreground text-background hover:opacity-90 text-[14px] font-medium transition-colors cursor-pointer">
                                                     <Headset size={16} /> Connect for support
+                                                </button>
+                                                {/* 3. Export all Data — disabled */}
+                                                <button
+                                                    disabled
+                                                    className="flex items-center gap-[8px] h-[40px] px-[16px] rounded-[8px] border border-border bg-background text-muted-foreground text-[14px] font-medium cursor-not-allowed opacity-50"
+                                                >
+                                                    <Download size={16} /> Export all Data
+                                                    <span className="ml-[6px] text-[11px] font-medium px-[6px] py-[2px] rounded-full bg-muted text-muted-foreground">Coming soon</span>
+                                                </button>
+                                                {/* 4. Delete Account — disabled */}
+                                                <button
+                                                    disabled
+                                                    className="flex items-center gap-[8px] h-[40px] px-[16px] rounded-[8px] border border-destructive/10 bg-destructive/5 text-destructive/40 text-[14px] font-medium cursor-not-allowed opacity-50"
+                                                >
+                                                    <Trash2 size={16} /> Delete Account
+                                                    <span className="ml-[6px] text-[11px] font-medium px-[6px] py-[2px] rounded-full bg-muted text-muted-foreground">Coming soon</span>
                                                 </button>
                                             </div>
                                         </div>
@@ -765,6 +794,44 @@ export default function DashboardTabs({ activeTab }: DashboardTabsProps) {
                     )}
                 </div>
             </div>
+
+            {/* Column Count Slider — Files only, bottom-right */}
+            {activeTab === "Files" && files.length > 0 && isLoaded && selectedIds.size === 0 && (
+                <div className="fixed bottom-[40px] right-[32px] z-40">
+                    <div
+                        className="inline-flex items-center rounded-full p-[3px] relative shrink-0"
+                        style={{
+                            background: "rgba(232,231,229,0.55)",
+                            backdropFilter: "blur(12px)",
+                            WebkitBackdropFilter: "blur(12px)",
+                            border: "1px solid rgba(0,0,0,0.07)",
+                        }}
+                    >
+                        {/* Sliding pill indicator */}
+                        <div
+                            className="absolute rounded-full bg-background shadow-sm"
+                            style={{
+                                width: 32, height: 32,
+                                top: 3, left: 3,
+                                transform: `translateX(${[4,6,8,10].indexOf(colCount) * 32}px)`,
+                                transition: "transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)",
+                            }}
+                        />
+                        {([4, 6, 8, 10] as const).map((n) => (
+                            <button
+                                key={n}
+                                onClick={() => handleColChange(n)}
+                                className={`relative flex items-center justify-center rounded-full w-[32px] h-[32px] transition-colors duration-300 cursor-pointer z-10 ${
+                                    colCount === n ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+                                }`}
+                                style={{ fontSize: "12px", fontWeight: 500 }}
+                            >
+                                {n}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {/* Floating Upload Pill Button */}
             {activeTab === "Files" && selectedIds.size === 0 && (
