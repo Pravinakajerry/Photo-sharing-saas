@@ -13,7 +13,6 @@ export default function CreateAccountPage() {
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState("");
-    const [success, setSuccess] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [legalVisible, setLegalVisible] = useState(false);
     const router = useRouter();
@@ -27,7 +26,6 @@ export default function CreateAccountPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError("");
-        setSuccess("");
 
 
         if (password.length < 6) {
@@ -42,8 +40,7 @@ export default function CreateAccountPage() {
             if (authError) {
                 setError(authError.message);
             } else {
-                setSuccess("Account created! Check your email for a confirmation link, then sign in.");
-                setTimeout(() => router.push("/login"), 3000);
+                router.push("/dashboard");
             }
         } catch {
             setError("An unexpected error occurred. Please try again.");
@@ -81,15 +78,7 @@ export default function CreateAccountPage() {
                         </div>
                     )}
 
-                    {/* Success */}
-                    {success && (
-                        <div
-                            className="mb-[18px] p-[12px] rounded-[6px] bg-green-500/10 border border-green-500/20 text-green-700"
-                            style={{ fontSize: "13px" }}
-                        >
-                            {success}
-                        </div>
-                    )}
+
 
                     {/* Form */}
                     <form onSubmit={handleSubmit} className="space-y-[18px]">

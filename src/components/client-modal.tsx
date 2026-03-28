@@ -78,6 +78,12 @@ export default function ClientModal({ isOpen, onClose }: ClientModalProps) {
                                 placeholder="E.g. Acme Corp"
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        document.getElementById('client-contact-input')?.focus();
+                                    }
+                                }}
                                 className="h-[46px] w-full rounded-[8px] border border-border bg-background px-[16px] text-foreground placeholder:text-muted-foreground outline-none transition-colors duration-300 focus:border-foreground"
                                 style={{ fontSize: "14px" }}
                                 required
@@ -89,9 +95,17 @@ export default function ClientModal({ isOpen, onClose }: ClientModalProps) {
                         <div className="flex flex-col gap-[6px]">
                             <label className="text-muted-foreground ml-[2px]" style={{ fontSize: "13px", fontWeight: 500 }}>Client Contact Information</label>
                             <textarea
+                                id="client-contact-input"
                                 placeholder="Email, phone number, physical address, or any other notes..."
                                 value={contact}
                                 onChange={(e) => setContact(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && !e.shiftKey) {
+                                        e.preventDefault();
+                                        const form = document.getElementById("modal-client-form") as HTMLFormElement;
+                                        if (form) form.requestSubmit();
+                                    }
+                                }}
                                 className="w-full min-h-[120px] p-[16px] rounded-[8px] border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-foreground/20 transition-all resize-y placeholder:text-muted-foreground"
                                 style={{ fontSize: "14px" }}
                             />

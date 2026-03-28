@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/components/auth-context";
+import { FeedbackModal } from "@/components/feedback-modal";
 
 interface DashboardHeaderProps {
     activeTab: Tab;
@@ -55,16 +56,19 @@ export default function DashboardHeader({
     const [renameValue, setRenameValue] = useState("");
     const [isSearchExpanded, setIsSearchExpanded] = useState(false);
     const [shareState, setShareState] = useState<"idle" | "copying" | "copied" | "error">("idle");
+    const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
 
     // ── Search / palette state ──
     const [searchQuery, setSearchQuery] = useState("");
     const [isPaletteOpen, setIsPaletteOpen] = useState(false);
     const [highlightedIndex, setHighlightedIndex] = useState(0);
+    const [highlightStyle, setHighlightStyle] = useState({ top: 0, left: 0, width: 0, height: 0, opacity: 0 });
 
     const dropdownRef = useRef<HTMLDivElement>(null);
     const renameInputRef = useRef<HTMLInputElement>(null);
     const searchContainerRef = useRef<HTMLDivElement>(null);
     const searchInputRef = useRef<HTMLInputElement>(null);
+    const listRef = useRef<HTMLDivElement>(null);
 
     // ── Close palette & dropdown on outside click ──
     useEffect(() => {
@@ -136,7 +140,27 @@ export default function DashboardHeader({
                 sub: "View your personal profile and assets",
                 onSelect: () => {
                     setActiveTab("Profile");
+                    if (window.location.pathname !== "/dashboard") router.push("/dashboard");
                     closePalette();
+                },
+            },
+            {
+                kind: "action",
+                label: "Clients",
+                sub: "View and manage all your clients",
+                onSelect: () => {
+                    setActiveTab("Clients");
+                    if (window.location.pathname !== "/dashboard") router.push("/dashboard");
+                    closePalette();
+                },
+            },
+            {
+                kind: "action",
+                label: "Feedback",
+                sub: "Send us your feedback",
+                onSelect: () => {
+                    closePalette();
+                    setIsFeedbackOpen(true);
                 },
             },
             {
@@ -145,6 +169,7 @@ export default function DashboardHeader({
                 sub: "Manage your account settings",
                 onSelect: () => {
                     setActiveTab("Settings");
+                    if (window.location.pathname !== "/dashboard") router.push("/dashboard");
                     closePalette();
                 },
             },
@@ -157,12 +182,6 @@ export default function DashboardHeader({
                     await signOut();
                     router.push("/");
                 },
-            },
-            {
-                kind: "action",
-                label: "Feedback",
-                sub: "Send us your feedback",
-                onSelect: () => { closePalette(); /* no-op */ },
             },
         ];
 
@@ -186,6 +205,47 @@ export default function DashboardHeader({
         setHighlightedIndex(0);
     }, [allResults]);
 
+    // ── Update sliding background pill ──
+    useEffect(() => {
+        if (isPaletteOpen && listRef.current && hasResults) {
+            // Wait slightly for DOM to render layout of results
+            const updateHighlight = () => {
+                const row = listRef.current?.querySelector(`[data-index="${highlightedIndex}"]`) as HTMLElement;
+                if (row) {
+                    setHighlightStyle({
+                        top: row.offsetTop,
+                        left: row.offsetLeft,
+                        width: row.offsetWidth,
+                        height: row.offsetHeight,
+                        opacity: 1,
+                    });
+                    
+                    // Simple logic to keep the focused element in view
+                    const container = listRef.current;
+                    if (container) {
+                        const rowTop = row.offsetTop;
+                        const rowBottom = rowTop + row.offsetHeight;
+                        const containerTop = container.scrollTop;
+                        const containerBottom = containerTop + container.clientHeight;
+                        
+                        // Using a small buffer for headers
+                        if (rowTop < containerTop + 20) {
+                            container.scrollTo({ top: rowTop - 30, behavior: 'smooth' });
+                        } else if (rowBottom > containerBottom) {
+                            container.scrollTo({ top: rowBottom - container.clientHeight + 10, behavior: 'smooth' });
+                        }
+                    }
+                }
+            };
+            
+            updateHighlight();
+            // A secondary request animation frame bounds check in case image thumbnails load
+            requestAnimationFrame(updateHighlight);
+        } else {
+            setHighlightStyle((prev) => ({ ...prev, opacity: 0 }));
+        }
+    }, [highlightedIndex, isPaletteOpen, allResults, hasResults]);
+
     const closePalette = useCallback(() => {
         setIsPaletteOpen(false);
         setSearchQuery("");
@@ -197,6 +257,32 @@ export default function DashboardHeader({
         setIsPaletteOpen(true);
         setTimeout(() => searchInputRef.current?.focus(), 50);
     }, []);
+
+    // ── Global Keyboard Shortcuts ──
+    useEffect(() => {
+        const handleGlobalKeyDown = (e: KeyboardEvent) => {
+            if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+                if (e.key === "Escape") (e.target as HTMLElement).blur();
+                return;
+            }
+
+            if (e.key === "~" || e.key === "`" || e.key === "/") {
+                e.preventDefault();
+                if (window.innerWidth < 1220) {
+                    setIsSearchExpanded(true);
+                }
+                openPalette();
+            }
+
+            if (e.key === "1") { setActiveTab("Profile"); if (window.location.pathname !== "/dashboard") router.push("/dashboard"); }
+            if (e.key === "2") { setActiveTab("Clients"); if (window.location.pathname !== "/dashboard") router.push("/dashboard"); }
+            if (e.key === "3") { setActiveTab("Settings"); if (window.location.pathname !== "/dashboard") router.push("/dashboard"); }
+            if (e.key === "4") document.getElementById("header-storage-toggle")?.click();
+        };
+
+        window.addEventListener("keydown", handleGlobalKeyDown);
+        return () => window.removeEventListener("keydown", handleGlobalKeyDown);
+    }, [openPalette]);
 
     // ── Keyboard navigation ──
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -247,10 +333,11 @@ export default function DashboardHeader({
         return (
             <button
                 key={result.id}
+                data-index={globalIndex}
                 onMouseEnter={() => setHighlightedIndex(globalIndex)}
                 onMouseDown={(e) => e.preventDefault()} // keep input focused so onClick fires
                 onClick={result.onSelect}
-                className={`w-full flex items-center gap-[12px] px-[12px] py-[8px] text-left transition-colors cursor-pointer rounded-[8px] ${isHighlighted ? "bg-[#e8e7e5]" : "hover:bg-[#f0efed]"}`}
+                className={`w-full flex items-center gap-[12px] px-[12px] py-[8px] text-left transition-colors cursor-pointer rounded-[8px] relative z-10`}
             >
                 {/* Icon / Thumbnail */}
                 <div className="flex-shrink-0 w-[32px] h-[32px] rounded-[6px] overflow-hidden flex items-center justify-center bg-[#e8e7e5]">
@@ -357,7 +444,7 @@ export default function DashboardHeader({
                             ref={searchInputRef}
                             id="dashboard-search-input"
                             type="text"
-                            placeholder="Search everything"
+                            placeholder="Search everything (/)"
                             value={searchQuery}
                             onChange={(e) => {
                                 setSearchQuery(e.target.value);
@@ -378,7 +465,21 @@ export default function DashboardHeader({
                             style={{ boxShadow: "0 8px 32px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06)" }}
                         >
                             {/* Inner scroll container */}
-                            <div className="max-h-[420px] overflow-y-auto p-[6px]">
+                            <div className="max-h-[420px] overflow-y-auto p-[6px] relative" ref={listRef}>
+                                {/* Sliding Background Pill */}
+                                {hasResults && (
+                                    <div
+                                        className="absolute bg-[#e8e7e5] rounded-[8px] pointer-events-none z-0"
+                                        style={{
+                                            top: highlightStyle.top,
+                                            left: highlightStyle.left,
+                                            width: highlightStyle.width,
+                                            height: highlightStyle.height,
+                                            opacity: highlightStyle.opacity,
+                                            transition: "all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)",
+                                        }}
+                                    />
+                                )}
                                 {hasResults ? (
                                     <>
                                         {renderSection("Assets", groupedResults.assets)}
@@ -581,6 +682,7 @@ export default function DashboardHeader({
                     ) : null}
                 </div>
             </div>
+            <FeedbackModal isOpen={isFeedbackOpen} onClose={() => setIsFeedbackOpen(false)} />
         </header>
     );
 }
