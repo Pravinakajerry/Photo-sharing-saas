@@ -3,7 +3,7 @@
 import { useFiles, FileItem } from "@/hooks/use-files";
 import { useDashboard } from "@/components/dashboard-context";
 import { SafeImage as Image } from "@/components/ui/safe-image";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { MoreVertical, FolderOpen, Pencil, Copy, Clipboard, Download, Trash2, Search, CheckSquare } from "lucide-react";
 import {
@@ -21,7 +21,7 @@ interface ManagerAsideProps {
 
 export default function ManagerAside({ isOpen, onClose }: ManagerAsideProps) {
     const router = useRouter();
-    const { files, renameFile, removeFile, deletingIds } = useFiles();
+    const { files, renameFile, removeFile, deletingIds, addFiles } = useFiles();
     const { selectedIds, setSelectedIds } = useDashboard();
     const [viewMode, setViewMode] = useState<"list" | "grid">("list");
     const [hoveredFile, setHoveredFile] = useState<FileItem | null>(null);
@@ -31,6 +31,7 @@ export default function ManagerAside({ isOpen, onClose }: ManagerAsideProps) {
     const [renameValue, setRenameValue] = useState("");
     const [searchQuery, setSearchQuery] = useState("");
     const [clipboardIds, setClipboardIds] = useState<Set<string>>(new Set());
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         const handleMouseMove = (e: MouseEvent) => {
@@ -132,6 +133,20 @@ export default function ManagerAside({ isOpen, onClose }: ManagerAsideProps) {
                 transition: "width 400ms cubic-bezier(0.16, 1, 0.3, 1), opacity 300ms ease",
             }}
         >
+            {/* Hidden file input for uploads */}
+            <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={(e) => {
+                    if (e.target.files && e.target.files.length > 0) {
+                        addFiles(e.target.files);
+                        e.target.value = "";
+                    }
+                }}
+            />
             <div className="flex items-center justify-between gap-3 px-[20px] py-[16px] border-b border-border w-[320px]">
                 <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/60 w-[14px] h-[14px]" strokeWidth={2.5} />
@@ -308,8 +323,16 @@ export default function ManagerAside({ isOpen, onClose }: ManagerAsideProps) {
                                     </div>
                                 ))
                             ) : (
-                                <div className="col-span-2 flex justify-center py-[20px]">
+                                <div className="col-span-2 flex flex-col items-center gap-[12px] py-[32px]">
                                     <p className="text-muted-foreground" style={{ fontSize: "13px" }}>No files available</p>
+                                    <button
+                                        onClick={() => fileInputRef.current?.click()}
+                                        className="flex items-center gap-[6px] h-[32px] px-[14px] rounded-full bg-foreground text-background hover:opacity-90 transition-all cursor-pointer"
+                                        style={{ fontSize: "12px", fontWeight: 500 }}
+                                    >
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
+                                        Upload New
+                                    </button>
                                 </div>
                             )}
                         </div>
@@ -443,9 +466,17 @@ export default function ManagerAside({ isOpen, onClose }: ManagerAsideProps) {
                                     </div>
                                 ))
                             ) : (
-                                <p className="text-muted-foreground text-center py-[20px]" style={{ fontSize: "13px" }}>
-                                    No files available
-                                </p>
+                                <div className="flex flex-col items-center gap-[12px] py-[32px]">
+                                    <p className="text-muted-foreground text-center" style={{ fontSize: "13px" }}>No files available</p>
+                                    <button
+                                        onClick={() => fileInputRef.current?.click()}
+                                        className="flex items-center gap-[6px] h-[32px] px-[14px] rounded-full bg-foreground text-background hover:opacity-90 transition-all cursor-pointer"
+                                        style={{ fontSize: "12px", fontWeight: 500 }}
+                                    >
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
+                                        Upload New
+                                    </button>
+                                </div>
                             )}
                         </>
                     )}

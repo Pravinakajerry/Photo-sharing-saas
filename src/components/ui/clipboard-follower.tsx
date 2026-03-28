@@ -6,31 +6,19 @@ import { SafeImage as Image } from "@/components/ui/safe-image";
 
 export function ClipboardFollower() {
     const { copiedItems, setCopiedItems, lastActionAt, isPasting } = useDashboard();
-    const [externalItems, setExternalItems] = useState<{ id: string; url: string }[]>([]);
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
     const [isVisible, setIsVisible] = useState(false);
     const [isPopping, setIsPopping] = useState(false);
     const [isDismissing, setIsDismissing] = useState(false);
 
-    const activeItems = externalItems.length > 0 ? externalItems : copiedItems;
-    const isExternal = externalItems.length > 0;
-
-    const prevX = useRef(0);
-    const prevTime = useRef(0);
-    const direction = useRef(0);
-    const shakeCount = useRef(0);
-    
-    const dismissTimer = useRef<NodeJS.Timeout | null>(null);
+    const activeItems = copiedItems;
 
     const dismissSequence = useCallback(() => {
         setIsDismissing(true);
         setTimeout(() => {
-            setExternalItems([]);
-            // Also clear internal items if user shakes to dismiss
             setCopiedItems([]);
             setIsVisible(false);
             setIsDismissing(false);
-            shakeCount.current = 0;
         }, 400); // Match duration of fade-out
     }, [setCopiedItems]);
 
@@ -40,45 +28,12 @@ export function ClipboardFollower() {
             
             if (activeItems.length > 0 && !isDismissing) {
                 if (!isVisible) setIsVisible(true);
-
-                // Shake detection logic
-                const now = Date.now();
-                if (prevTime.current === 0) {
-                    prevTime.current = now;
-                    prevX.current = e.clientX;
-                    return;
-                }
-                
-                const dt = now - prevTime.current;
-                if (dt > 16) {
-                    const dx = e.clientX - prevX.current;
-                    const speed = Math.abs(dx / dt);
-                    
-                    // Only apply shake-to-dismiss for external items
-                    if (isExternal && speed > 0.8) { // Speed threshold for a shake
-                        const newDir = Math.sign(dx);
-                        if (newDir !== 0 && newDir !== direction.current) {
-                            shakeCount.current += 1;
-                            direction.current = newDir;
-                            
-                            if (shakeCount.current >= 5) { // 5 directional changes = shake
-                                dismissSequence();
-                            }
-                        }
-                    } else if (dt > 150 && speed < 0.1) {
-                        // Reset if no fast movement
-                        shakeCount.current = Math.max(0, shakeCount.current - 1);
-                    }
-                    
-                    prevX.current = e.clientX;
-                    prevTime.current = now;
-                }
             }
         };
 
         window.addEventListener("mousemove", handleMouseMove);
         return () => window.removeEventListener("mousemove", handleMouseMove);
-    }, [activeItems.length, isVisible, isDismissing, dismissSequence]);
+    }, [activeItems.length, isVisible, isDismissing]);
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -87,15 +42,6 @@ export function ClipboardFollower() {
             }
         };
         
-        const handlePaste = () => {
-            if (isExternal) {
-                // Instantly dismiss if we paste the external items
-                setExternalItems([]);
-                setIsVisible(false);
-                setIsDismissing(false);
-            }
-        };
-
         const handleDoubleClick = () => {
             if (activeItems.length > 0) {
                 dismissSequence();
@@ -103,62 +49,12 @@ export function ClipboardFollower() {
         };
 
         window.addEventListener("keydown", handleKeyDown);
-        window.addEventListener("paste", handlePaste);
         window.addEventListener("dblclick", handleDoubleClick);
         return () => {
             window.removeEventListener("keydown", handleKeyDown);
-            window.removeEventListener("paste", handlePaste);
             window.removeEventListener("dblclick", handleDoubleClick);
         };
-    }, [activeItems.length, dismissSequence, isExternal]);
-
-    // Check system clipboard on window focus
-    useEffect(() => {
-        const checkClipboard = async () => {
-            try {
-                // Warning: navigator.clipboard.read() might prompt for permissions in some browsers
-                // if not already granted.
-                const items = await navigator.clipboard.read();
-                const newExternalItems: { id: string; url: string }[] = [];
-                for (const item of items) {
-                    const imageType = item.types.find(type => type.startsWith('image/'));
-                    if (imageType) {
-                        const blob = await item.getType(imageType);
-                        const url = URL.createObjectURL(blob);
-                        newExternalItems.push({ id: `ext-${Date.now()}-${Math.random()}`, url });
-                    }
-                }
-                
-                if (newExternalItems.length > 0) {
-                    setExternalItems(newExternalItems);
-                    setIsVisible(true);
-                    setIsPopping(true);
-                    setTimeout(() => setIsPopping(false), 400);
-                    
-                    // Auto dismiss after 5 seconds
-                    if (dismissTimer.current) clearTimeout(dismissTimer.current);
-                    dismissTimer.current = setTimeout(() => {
-                        setIsDismissing(true);
-                        setTimeout(() => {
-                            setExternalItems([]);
-                            setIsVisible(false);
-                            setIsDismissing(false);
-                        }, 400);
-                    }, 5000);
-                }
-            } catch (error) {
-                // Silently fail if clipboard permissions are denied or unsupported
-            }
-        };
-
-        window.addEventListener("focus", checkClipboard);
-        checkClipboard(); // Also check on initial mount
-        
-        return () => {
-            window.removeEventListener("focus", checkClipboard);
-            if (dismissTimer.current) clearTimeout(dismissTimer.current);
-        };
-    }, []);
+    }, [activeItems.length, dismissSequence]);
 
     // Internal copy pop animation
     useEffect(() => {
@@ -236,7 +132,7 @@ export function ClipboardFollower() {
             {!isPasting && (
                 <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 whitespace-nowrap opacity-40 transition-opacity duration-300">
                     <p className="text-[10px] uppercase tracking-widest font-bold text-foreground">
-                        {isExternal ? "Shake to dismiss" : "Cmd + V to paste"}
+                        Cmd + V to paste
                     </p>
                 </div>
             )}

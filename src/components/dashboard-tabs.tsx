@@ -10,22 +10,16 @@ import InvoiceModal from "@/components/invoice-modal";
 import ClientModal from "@/components/client-modal";
 import { useLassoSelection } from "@/hooks/use-lasso-selection";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
-import { Download, Trash2, Headset, Instagram, Youtube, Video, Twitter, MessageCircle, Send, Linkedin, AtSign, FileText, Mail, Palette, LogOut } from "lucide-react";
+import { Download, Trash2, Headset, Instagram, Youtube, Video, Twitter, MessageCircle, Send, Linkedin, AtSign, FileText, Mail, Palette, LogOut, Check, Share, Copy } from "lucide-react";
 import { useProfile } from "@/hooks/use-profile";
 import { useAuth } from "@/components/auth-context";
-
-export const tabs = ["Files", "Clients", "Payment", "Settings"] as const;
-export type Tab = (typeof tabs)[number];
+import { tabs, Tab, settingsTabs, SettingsTab } from "@/components/dashboard-context";
 
 const emptyMessages: Record<Tab, string> = {
-    Files: "No files yet, upload your first file",
+    Profile: "No files yet, upload your first file",
     Clients: "No clients yet, add your first client",
-    Payment: "No payment history yet",
     Settings: "Settings are being configured",
 };
-
-const settingsTabs = ["Account", "Profile", "Payment", "Customize"] as const;
-type SettingsTab = (typeof settingsTabs)[number];
 
 interface DashboardTabsProps {
     activeTab: Tab;
@@ -35,15 +29,28 @@ export default function DashboardTabs({ activeTab }: DashboardTabsProps) {
     const router = useRouter();
     const { clients } = useClients();
     const { files, addFiles, removeFile, isLoaded, deletingIds } = useFiles();
-    const { setCopiedItems, setLastActionAt, copiedItems, setIsPasting, newlyAddedIds, setNewlyAddedIds, selectedIds, setSelectedIds } = useDashboard();
+    const {
+        setActiveTab,
+        settingsTab,
+        setSettingsTab,
+        setCopiedItems,
+        setLastActionAt,
+        copiedItems,
+        setIsPasting,
+        newlyAddedIds,
+        setNewlyAddedIds,
+        selectedIds,
+        setSelectedIds
+    } = useDashboard();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const { selectionBox } = useLassoSelection(containerRef, selectedIds, setSelectedIds);
     const [isInvoiceModalOpen, setInvoiceModalOpen] = useState(false);
     const [isClientModalOpen, setClientModalOpen] = useState(false);
-    const [colCount, setColCount] = useState(4);
+    const [colCount, setColCount] = useState(6);
     const [isGridTransitioning, setIsGridTransitioning] = useState(false);
-    const { signOut } = useAuth();
+    const [shareCopied, setShareCopied] = useState(false);
+    const { signOut, user } = useAuth();
 
     const handleColChange = (n: number) => {
         if (n === colCount) return;
@@ -51,13 +58,12 @@ export default function DashboardTabs({ activeTab }: DashboardTabsProps) {
         setTimeout(() => {
             setColCount(n);
             setIsGridTransitioning(false);
-        }, 220);
+        }, 300);
     };
 
-    // Settings sub-navigation state
-    const [settingsTab, setSettingsTab] = useState<SettingsTab>("Account");
+    // Settings sub-navigation state (now from global context)
     const { profile, updateProfile, isLoading: isProfileLoading } = useProfile();
-    
+
     // Profile form state
     const [profileForm, setProfileForm] = useState({
         username: "",
@@ -69,7 +75,8 @@ export default function DashboardTabs({ activeTab }: DashboardTabsProps) {
         whatsapp: "",
         telegram: "",
         linkedin: "",
-        contact_email: ""
+        contact_email: "",
+        display_name: ""
     });
 
     const [paymentForm, setPaymentForm] = useState({
@@ -91,7 +98,8 @@ export default function DashboardTabs({ activeTab }: DashboardTabsProps) {
                 whatsapp: profile.whatsapp || "",
                 telegram: profile.telegram || "",
                 linkedin: profile.linkedin || "",
-                contact_email: profile.contact_email || ""
+                contact_email: profile.contact_email || "",
+                display_name: profile.display_name || ""
             });
             setPaymentForm({
                 bank_name: profile.bank_name || "",
@@ -188,7 +196,7 @@ export default function DashboardTabs({ activeTab }: DashboardTabsProps) {
                 return;
             }
 
-            if (activeTab === "Files") {
+            if (activeTab === "Profile") {
                 if (e.key.toLowerCase() === "u") {
                     e.preventDefault();
                     fileInputRef.current?.click();
@@ -210,58 +218,45 @@ export default function DashboardTabs({ activeTab }: DashboardTabsProps) {
                     setLastActionAt(Date.now());
                 } else if (e.key.toLowerCase() === "v" && (e.metaKey || e.ctrlKey)) {
                     e.preventDefault();
-                    
+
                     const handlePaste = async () => {
                         setIsPasting(true);
 
-                        // Try to read external items from clipboard
-                        let externalFiles: File[] = [];
-                        try {
-                            const items = await navigator.clipboard.read();
-                            for (const item of items) {
-                                const imageType = item.types.find(type => type.startsWith('image/'));
-                                if (imageType) {
-                                    const blob = await item.getType(imageType);
-                                    // Generate a name for the pasted image
-                                    const ext = imageType.split('/')[1] || 'png';
-                                    const file = new File([blob], `pasted_image_${Date.now()}.${ext}`, { type: imageType });
-                                    externalFiles.push(file);
-                                }
-                            }
-                        } catch (error) {
-                            console.error("Failed to read clipboard:", error);
-                        }
-
-                        // If we have external files, upload them
-                        if (externalFiles.length > 0) {
-                            addFiles(externalFiles);
+                        // Prioritize internal clipboard!
+                        if (copiedItems.length > 0) {
+                            const newIds = new Set(copiedItems.map(i => i.id));
+                            setNewlyAddedIds(newIds);
+                            setCopiedItems([]); // Reset internal clipboard immediately
                             setIsPasting(false);
-                            // We don't have newIds for these instantly as they might be uploading
-                            
-                            // Try to clear the system clipboard so the UI dismisses and it isn't pasted again accidentally
-                            try {
-                                // Writing empty text is the most reliable cross-browser way to clear it
-                                await navigator.clipboard.writeText('');
-                            } catch (e) {
-                                console.error("Could not clear clipboard:", e);
-                            }
-                        } 
-                        // Otherwise, fallback to internal paste logic if we had copied internal items
-                        else if (copiedItems.length > 0) {
+
+                            // Clear the highlight after animation
                             setTimeout(() => {
-                                const newIds = new Set(copiedItems.map(i => i.id));
-                                setNewlyAddedIds(newIds);
-                                setCopiedItems([]);
-                                setIsPasting(false);
-
-                                // Clear the highlight after animation
-                                setTimeout(() => {
-                                    setNewlyAddedIds(new Set());
-                                }, 2000);
-                            }, 400);
+                                setNewlyAddedIds(new Set());
+                            }, 2000);
                         } else {
-                            // Nothing to paste
-                            setIsPasting(false);
+                            // Only check OS clipboard if app clipboard is empty
+                            let externalFiles: File[] = [];
+                            try {
+                                const items = await navigator.clipboard.read();
+                                for (const item of items) {
+                                    const imageType = item.types.find(type => type.startsWith('image/'));
+                                    if (imageType) {
+                                        const blob = await item.getType(imageType);
+                                        const ext = imageType.split('/')[1] || 'png';
+                                        const file = new File([blob], `pasted_image_${Date.now()}.${ext}`, { type: imageType });
+                                        externalFiles.push(file);
+                                    }
+                                }
+                            } catch (error) {
+                                console.error("Failed to read clipboard:", error);
+                            }
+
+                            if (externalFiles.length > 0) {
+                                addFiles(externalFiles);
+                                setIsPasting(false);
+                            } else {
+                                setIsPasting(false);
+                            }
                         }
                     };
 
@@ -336,143 +331,206 @@ export default function DashboardTabs({ activeTab }: DashboardTabsProps) {
                                 </div>
                             ))}
                         </div>
-                    ) : activeTab === "Files" && files.length > 0 && isLoaded ? (
-                        <div
-                            className="gap-[24px] space-y-[24px]"
-                            style={{
-                                columnCount: colCount,
-                                opacity: isGridTransitioning ? 0 : 1,
-                                filter: isGridTransitioning ? 'blur(8px)' : 'blur(0px)',
-                                transform: isGridTransitioning ? 'scale(0.99)' : 'scale(1)',
-                                transition: 'opacity 0.22s ease, filter 0.22s ease, transform 0.22s ease',
-                            }}>
-                            {files.map((file) => {
-                                const isSelected = selectedIds.has(file.id);
-
-                                return (
-                                    <div
-                                        key={file.id}
-                                        data-selectable-id={file.id}
-                                        className={`break-inside-avoid relative group rounded-[16px] overflow-hidden border bg-[#f6f5f4] cursor-pointer shadow-sm hover:shadow-md transition-all duration-300 select-none ${isSelected
-                                            ? "border-foreground ring-1 ring-foreground animate-selection-pulse"
-                                            : "border-border/50"
-                                            } ${newlyAddedIds.has(file.id) ? "animate-blur-fade-in scale-105" : ""} ${deletingIds.has(file.id) ? "opacity-0 blur-md scale-90 pointer-events-none" : "opacity-100 blur-0 scale-100"}`}
-                                        onClick={(e) => {
-                                            // Handle selection mode if items are already selected or modifiers are used
-                                            if (e.shiftKey || e.metaKey || e.ctrlKey || selectedIds.size > 0) {
-                                                e.preventDefault();
-                                                toggleSelection(e, file.id);
-                                                return;
-                                            }
-                                            router.push(`/dashboard/image/${file.id}`);
-                                        }}
-                                    >
+                    ) : activeTab === "Profile" && files.length > 0 && isLoaded ? (
+                        <div className="flex flex-col gap-[48px] items-center w-full">
+                            {/* Profile Header Component */}
+                            <div className="flex flex-col items-center gap-[0px]">
+                                <div className="flex flex-row items-center gap-[8px] py-[24px]">
+                                    {/* Avatar */}
+                                    <div className="w-[100px] h-[100px] rounded-full overflow-hidden border-[3px] border-border/50 bg-muted shadow-lg shrink-0">
                                         <Image
-                                            src={file.url}
-                                            alt={file.name}
-                                            width={600}
-                                            height={800}
-                                            className="w-full h-auto object-cover transition-transform duration-500 group-hover:scale-[1.03] pointer-events-none"
-                                            unoptimized
-                                            draggable={false}
+                                            src={profile?.avatar_url || "/profile-photo-v2.jpg"}
+                                            alt="Profile"
+                                            width={100}
+                                            height={100}
+                                            className="w-full h-full object-cover"
                                         />
-                                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-[20px] pointer-events-none">
-                                            <p className="text-white truncate" style={{ fontSize: "14px", fontWeight: 500 }}>{file.name}</p>
+                                    </div>
+
+                                    {/* Name and Username */}
+                                    <div className="flex flex-col items-start gap-[4px] mb-[8px]">
+                                        <h1 className="text-[28px] font-medium tracking-tight text-foreground">
+                                            {profile?.display_name || "Pravin Singh"}
+                                        </h1>
+                                        <div className="flex items-center gap-[4px] text-muted-foreground" style={{ fontSize: "14px" }}>
+                                            <span>@{profile?.username || "singh"}</span>
                                         </div>
+                                    </div>
+                                </div>
 
-                                        {/* Selection Overlay */}
-                                        {(isSelected || selectedIds.size > 0) && (
-                                            <div className="absolute inset-0 bg-black/5 pointer-events-none" />
-                                        )}
-
-                                        {/* Checkbox */}
-                                        <button
-                                            type="button"
-                                            onClick={(e) => toggleSelection(e, file.id)}
-                                            className={`absolute top-[12px] left-[12px] w-[20px] h-[20px] rounded-full border flex items-center justify-center transition-all duration-200 cursor-pointer z-10 ${isSelected
-                                                ? "bg-foreground border-foreground scale-100"
-                                                : "bg-background/80 border-border scale-90 group-hover:scale-100 opacity-0 group-hover:opacity-100"
-                                                }`}
+                                {/* Action Buttons Container */}
+                                <div className="flex items-center gap-[12px]">
+                                    <div className="flex items-center gap-[8px]">
+                                        <button 
+                                            onClick={() => {
+                                                setActiveTab("Settings");
+                                                setSettingsTab("Profile");
+                                            }}
+                                            className="bg-[#1A1A1A] text-white px-[24px] py-[10px] rounded-full font-medium shadow-sm hover:scale-[1.02] active:scale-95 transition-all cursor-pointer"
+                                            style={{ fontSize: "14px" }}
                                         >
-                                            {isSelected && (
-                                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-background" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                                                    <polyline points="20 6 9 17 4 12"></polyline>
-                                                </svg>
+                                            Edit Profile
+                                        </button>
+                                        
+                                        <button 
+                                            onClick={async () => {
+                                                if (!profile?.username) return;
+                                                const url = `${window.location.origin}/@${profile.username}`;
+                                                await navigator.clipboard.writeText(url);
+                                                setShareCopied(true);
+                                                setTimeout(() => setShareCopied(false), 2000);
+                                            }}
+                                            className="w-[40px] h-[40px] rounded-full bg-[#f6f5f4] border border-border/50 flex items-center justify-center text-foreground hover:bg-[#e8e7e5] transition-all cursor-pointer shadow-sm group relative"
+                                            title="Copy profile link"
+                                        >
+                                            {shareCopied ? (
+                                                <Check size={18} className="text-green-600 animate-in zoom-in duration-300" />
+                                            ) : (
+                                                <Share size={18} className="group-active:scale-90 transition-transform" />
                                             )}
                                         </button>
                                     </div>
-                                );
-                            })}
-                        </div>
-                    ) : activeTab === "Payment" ? (
-                        <div className="w-full max-w-[620px] mx-auto flex flex-col gap-[40px]">
-                            {/* Summary Metrics */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-[16px]">
-                                {/* Coming */}
-                                <div className="border border-border rounded-[12px] p-[20px] bg-background">
-                                    <p className="text-muted-foreground mb-[8px]" style={{ fontSize: "14px", fontWeight: 500 }}>Coming</p>
-                                    <p className="text-foreground" style={{ fontSize: "24px", fontWeight: 600 }}>$50</p>
-                                </div>
-                                {/* Nov */}
-                                <div className="border border-border rounded-[12px] p-[20px] bg-background">
-                                    <p className="text-muted-foreground mb-[8px]" style={{ fontSize: "14px", fontWeight: 500 }}>Nov</p>
-                                    <p className="text-foreground" style={{ fontSize: "24px", fontWeight: 600 }}>$140</p>
-                                </div>
-                                {/* 2026 */}
-                                <div className="border border-border rounded-[12px] p-[20px] bg-background">
-                                    <p className="text-muted-foreground mb-[8px]" style={{ fontSize: "14px", fontWeight: 500 }}>2026</p>
-                                    <p className="text-foreground" style={{ fontSize: "24px", fontWeight: 600 }}>$830</p>
-                                </div>
-                            </div>
-
-                            {/* Sent Section */}
-                            <div className="flex flex-col gap-[16px]">
-                                <div className="flex items-center gap-[16px] pb-[16px]">
-                                    <h2 className="text-foreground" style={{ fontSize: "16px", fontWeight: 600 }}>Sent</h2>
-
-                                    {/* Scribble Divider */}
-                                    <div className="flex-1 flex items-center justify-center opacity-40">
-                                        <svg className="w-full h-[6px]" preserveAspectRatio="none" viewBox="0 0 400 6" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                            <path d="M2.5 3C22 2 150 4 397.5 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                                        </svg>
-                                    </div>
-                                </div>
-
-                                <div className="flex flex-col gap-[8px]">
-                                    {/* Mock Sent Invoice Item */}
-                                    <div className="flex items-center justify-between p-[16px] border border-border rounded-[12px] bg-background">
-                                        <span style={{ fontSize: "15px", fontWeight: 500 }}>Client Name</span>
-                                        <div className="flex items-center gap-[16px]">
-                                            <button className="text-muted-foreground hover:text-foreground transition-colors" style={{ fontSize: "14px", fontWeight: 500 }}>Resend</button>
-                                            <span style={{ fontSize: "15px", fontWeight: 600 }}>$50</span>
-                                        </div>
+                                    
+                                    {/* Dynamic Social Icons */}
+                                    <div className="flex items-center gap-[8px]">
+                                        {[
+                                            { id: 'instagram', icon: Instagram, url: profile?.instagram },
+                                            { id: 'youtube', icon: Youtube, url: profile?.youtube },
+                                            { id: 'vimeo', icon: Video, url: profile?.vimeo },
+                                            { id: 'twitter', icon: Twitter, url: profile?.twitter },
+                                            { id: 'whatsapp', icon: MessageCircle, url: profile?.whatsapp ? (profile.whatsapp.startsWith('http') ? profile.whatsapp : `https://wa.me/${profile.whatsapp}`) : null },
+                                            { id: 'telegram', icon: Send, url: profile?.telegram ? (profile.telegram.startsWith('http') ? profile.telegram : `https://t.me/${profile.telegram}`) : null },
+                                            { id: 'linkedin', icon: Linkedin, url: profile?.linkedin },
+                                            { id: 'email', icon: AtSign, url: profile?.contact_email ? `mailto:${profile.contact_email}` : null },
+                                        ].filter(link => link.url).map((link) => (
+                                            <a
+                                                key={link.id}
+                                                href={link.url!}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="w-[40px] h-[40px] rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-all cursor-pointer"
+                                            >
+                                                <link.icon size={18} />
+                                            </a>
+                                        ))}
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Paid Section */}
-                            <div className="flex flex-col gap-[16px]">
-                                <div className="flex items-center gap-[16px] pb-[16px]">
-                                    <h2 className="text-foreground" style={{ fontSize: "16px", fontWeight: 600 }}>Paid</h2>
+                            <div
+                                style={{
+                                    ...(colCount === 2
+                                        ? { display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "24px", maxWidth: "1440px", margin: "0 auto" }
+                                        : { columnCount: colCount }
+                                    ),
+                                    opacity: isGridTransitioning ? 0 : 1,
+                                    filter: isGridTransitioning ? 'blur(12px)' : 'blur(0px)',
+                                    transform: isGridTransitioning ? 'scale(0.98)' : 'scale(1)',
+                                    transition: 'opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), filter 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                }}
+                                className={colCount !== 2 ? "gap-[24px] space-y-[24px]" : ""}
+                            >
+                                {files.map((file) => {
+                                    const isSelected = selectedIds.has(file.id);
 
-                                    {/* Scribble Divider */}
-                                    <div className="flex-1 flex items-center justify-center opacity-40">
-                                        <svg className="w-full h-[6px]" preserveAspectRatio="none" viewBox="0 0 400 6" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                            <path d="M2.5 3C22 2 150 4 397.5 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                                        </svg>
-                                    </div>
-                                </div>
-
-                                <div className="flex flex-col gap-[8px]">
-                                    {/* Mock Paid Invoice Item */}
-                                    <div className="flex items-center justify-between p-[16px] border border-border rounded-[12px] bg-background">
-                                        <span style={{ fontSize: "15px", fontWeight: 500 }}>Client Name</span>
-                                        <div className="flex items-center gap-[16px]">
-                                            <span className="text-muted-foreground" style={{ fontSize: "14px" }}>14 Nov 25</span>
-                                            <span style={{ fontSize: "15px", fontWeight: 600 }}>$140</span>
+                                    return colCount === 2 ? (
+                                        /* Editorial card — object-contain + padding, like the reference */
+                                        <div
+                                            key={file.id}
+                                            data-selectable-id={file.id}
+                                            className={`relative group cursor-pointer select-none border bg-[#f6f5f4] transition-all duration-300 flex items-center justify-center overflow-hidden ${isSelected
+                                                ? "border-foreground ring-1 ring-foreground animate-selection-pulse"
+                                                : "border-border/50 hover:border-border"
+                                                } ${newlyAddedIds.has(file.id) ? "animate-blur-fade-in" : ""} ${deletingIds.has(file.id) ? "opacity-0 blur-md scale-90 pointer-events-none" : ""}`}
+                                            style={{ borderRadius: "12px", padding: "40px", aspectRatio: "7/8", maxHeight: "720px" }}
+                                            onClick={(e) => {
+                                                if (e.shiftKey || e.metaKey || e.ctrlKey || selectedIds.size > 0) {
+                                                    e.preventDefault();
+                                                    toggleSelection(e, file.id);
+                                                    return;
+                                                }
+                                                localStorage.setItem("img.backUrl", "/dashboard");
+                                                router.push(`/dashboard/image/${file.id}`);
+                                            }}
+                                        >
+                                            <Image
+                                                src={file.url}
+                                                alt={file.name}
+                                                width={600}
+                                                height={800}
+                                                className="h-full w-full max-w-full object-contain transition-transform duration-500 group-hover:scale-[1.02] pointer-events-none drop-shadow-[0_4px_12px_rgba(0,0,0,0.08)]"
+                                                unoptimized
+                                                draggable={false}
+                                            />
+                                            {(isSelected || selectedIds.size > 0) && (
+                                                <div className="absolute inset-0 bg-black/5 pointer-events-none rounded-[12px]" />
+                                            )}
+                                            <button
+                                                type="button"
+                                                onClick={(e) => toggleSelection(e, file.id)}
+                                                className={`absolute top-[20px] left-[20px] w-[20px] h-[20px] rounded-full border flex items-center justify-center transition-all duration-200 cursor-pointer z-10 ${isSelected
+                                                    ? "bg-foreground border-foreground scale-100"
+                                                    : "bg-background/80 border-border scale-90 group-hover:scale-100 opacity-0 group-hover:opacity-100"
+                                                    }`}
+                                            >
+                                                {isSelected && (
+                                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-background" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                                        <polyline points="20 6 9 17 4 12"></polyline>
+                                                    </svg>
+                                                )}
+                                            </button>
                                         </div>
-                                    </div>
-                                </div>
+                                    ) : (
+                                        /* Masonry card */
+                                        <div
+                                            key={file.id}
+                                            data-selectable-id={file.id}
+                                            className={`break-inside-avoid relative group overflow-hidden border bg-[#f6f5f4] cursor-pointer shadow-sm hover:shadow-md transition-all duration-300 select-none ${isSelected
+                                                ? "border-foreground ring-1 ring-foreground animate-selection-pulse"
+                                                : "border-border/50"
+                                                } ${newlyAddedIds.has(file.id) ? "animate-blur-fade-in scale-105" : ""} ${deletingIds.has(file.id) ? "opacity-0 blur-md scale-90 pointer-events-none" : "opacity-100 blur-0 scale-100"}`}
+                                            onClick={(e) => {
+                                                if (e.shiftKey || e.metaKey || e.ctrlKey || selectedIds.size > 0) {
+                                                    e.preventDefault();
+                                                    toggleSelection(e, file.id);
+                                                    return;
+                                                }
+                                                localStorage.setItem("img.backUrl", "/dashboard");
+                                                router.push(`/dashboard/image/${file.id}`);
+                                            }}
+                                        >
+                                            <Image
+                                                src={file.url}
+                                                alt={file.name}
+                                                width={600}
+                                                height={800}
+                                                className="w-full h-auto object-cover transition-transform duration-500 group-hover:scale-[1.03] pointer-events-none"
+                                                unoptimized
+                                                draggable={false}
+                                            />
+                                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-[20px] pointer-events-none">
+                                                <p className="text-white truncate" style={{ fontSize: "14px", fontWeight: 500 }}>{file.name}</p>
+                                            </div>
+                                            {(isSelected || selectedIds.size > 0) && (
+                                                <div className="absolute inset-0 bg-black/5 pointer-events-none" />
+                                            )}
+                                            <button
+                                                type="button"
+                                                onClick={(e) => toggleSelection(e, file.id)}
+                                                className={`absolute top-[12px] left-[12px] w-[20px] h-[20px] rounded-full border flex items-center justify-center transition-all duration-200 cursor-pointer z-10 ${isSelected
+                                                    ? "bg-foreground border-foreground scale-100"
+                                                    : "bg-background/80 border-border scale-90 group-hover:scale-100 opacity-0 group-hover:opacity-100"
+                                                    }`}
+                                            >
+                                                {isSelected && (
+                                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-background" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                                        <polyline points="20 6 9 17 4 12"></polyline>
+                                                    </svg>
+                                                )}
+                                            </button>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
                     ) : activeTab === "Settings" ? (
@@ -528,38 +586,38 @@ export default function DashboardTabs({ activeTab }: DashboardTabsProps) {
                                                         <label className="text-foreground flex items-center gap-[6px]" style={{ fontSize: "14px", fontWeight: 500 }}>
                                                             <AtSign size={14} className="text-muted-foreground" /> Username
                                                         </label>
-                                                        <input 
-                                                            type="text" 
+                                                        <input
+                                                            type="text"
                                                             name="username"
                                                             value={profileForm.username}
                                                             onChange={handleProfileChange}
-                                                            placeholder="pravin_singh" 
-                                                            className="h-[40px] px-[12px] rounded-[8px] border border-border bg-background text-foreground text-[14px] outline-none focus:border-foreground transition-colors" 
+                                                            placeholder="pravin_singh"
+                                                            className="h-[40px] px-[12px] rounded-[8px] border border-border bg-background text-foreground text-[14px] outline-none focus:border-foreground transition-colors"
                                                         />
                                                     </div>
                                                     <div className="flex flex-col gap-[8px]">
                                                         <label className="text-foreground flex items-center gap-[6px]" style={{ fontSize: "14px", fontWeight: 500 }}>
                                                             <Mail size={14} className="text-muted-foreground" /> Contact Email
                                                         </label>
-                                                        <input 
-                                                            type="email" 
+                                                        <input
+                                                            type="email"
                                                             name="contact_email"
                                                             value={profileForm.contact_email}
                                                             onChange={handleProfileChange}
-                                                            placeholder="contact@example.com" 
-                                                            className="h-[40px] px-[12px] rounded-[8px] border border-border bg-background text-foreground text-[14px] outline-none focus:border-foreground transition-colors" 
+                                                            placeholder="contact@example.com"
+                                                            className="h-[40px] px-[12px] rounded-[8px] border border-border bg-background text-foreground text-[14px] outline-none focus:border-foreground transition-colors"
                                                         />
                                                     </div>
                                                     <div className="flex flex-col gap-[8px] md:col-span-2">
                                                         <label className="text-foreground flex items-center gap-[6px]" style={{ fontSize: "14px", fontWeight: 500 }}>
                                                             <FileText size={14} className="text-muted-foreground" /> Bio
                                                         </label>
-                                                        <textarea 
+                                                        <textarea
                                                             name="bio"
                                                             value={profileForm.bio}
                                                             onChange={handleProfileChange}
-                                                            placeholder="Tell us about yourself..." 
-                                                            className="min-h-[100px] p-[12px] rounded-[8px] border border-border bg-background text-foreground text-[14px] outline-none focus:border-foreground transition-colors resize-none" 
+                                                            placeholder="Tell us about yourself..."
+                                                            className="min-h-[100px] p-[12px] rounded-[8px] border border-border bg-background text-foreground text-[14px] outline-none focus:border-foreground transition-colors resize-none"
                                                         />
                                                     </div>
                                                 </div>
@@ -576,13 +634,13 @@ export default function DashboardTabs({ activeTab }: DashboardTabsProps) {
                                                     <label className="text-foreground flex items-center gap-[6px]" style={{ fontSize: "14px", fontWeight: 500 }}>
                                                         <Instagram size={14} className="text-muted-foreground" /> Instagram
                                                     </label>
-                                                    <input 
-                                                        type="text" 
+                                                    <input
+                                                        type="text"
                                                         name="instagram"
                                                         value={profileForm.instagram}
                                                         onChange={handleProfileChange}
-                                                        placeholder="https://instagram.com/..." 
-                                                        className="h-[40px] px-[12px] rounded-[8px] border border-border bg-background text-foreground text-[14px] outline-none focus:border-foreground transition-colors" 
+                                                        placeholder="https://instagram.com/..."
+                                                        className="h-[40px] px-[12px] rounded-[8px] border border-border bg-background text-foreground text-[14px] outline-none focus:border-foreground transition-colors"
                                                     />
                                                 </div>
                                                 {/* Youtube */}
@@ -590,13 +648,13 @@ export default function DashboardTabs({ activeTab }: DashboardTabsProps) {
                                                     <label className="text-foreground flex items-center gap-[6px]" style={{ fontSize: "14px", fontWeight: 500 }}>
                                                         <Youtube size={14} className="text-muted-foreground" /> Youtube
                                                     </label>
-                                                    <input 
-                                                        type="text" 
+                                                    <input
+                                                        type="text"
                                                         name="youtube"
                                                         value={profileForm.youtube}
                                                         onChange={handleProfileChange}
-                                                        placeholder="https://youtube.com/..." 
-                                                        className="h-[40px] px-[12px] rounded-[8px] border border-border bg-background text-foreground text-[14px] outline-none focus:border-foreground transition-colors" 
+                                                        placeholder="https://youtube.com/..."
+                                                        className="h-[40px] px-[12px] rounded-[8px] border border-border bg-background text-foreground text-[14px] outline-none focus:border-foreground transition-colors"
                                                     />
                                                 </div>
                                                 {/* Vimeo */}
@@ -604,13 +662,13 @@ export default function DashboardTabs({ activeTab }: DashboardTabsProps) {
                                                     <label className="text-foreground flex items-center gap-[6px]" style={{ fontSize: "14px", fontWeight: 500 }}>
                                                         <Video size={14} className="text-muted-foreground" /> Vimeo
                                                     </label>
-                                                    <input 
-                                                        type="text" 
+                                                    <input
+                                                        type="text"
                                                         name="vimeo"
                                                         value={profileForm.vimeo}
                                                         onChange={handleProfileChange}
-                                                        placeholder="https://vimeo.com/..." 
-                                                        className="h-[40px] px-[12px] rounded-[8px] border border-border bg-background text-foreground text-[14px] outline-none focus:border-foreground transition-colors" 
+                                                        placeholder="https://vimeo.com/..."
+                                                        className="h-[40px] px-[12px] rounded-[8px] border border-border bg-background text-foreground text-[14px] outline-none focus:border-foreground transition-colors"
                                                     />
                                                 </div>
                                                 {/* Twitter */}
@@ -618,13 +676,13 @@ export default function DashboardTabs({ activeTab }: DashboardTabsProps) {
                                                     <label className="text-foreground flex items-center gap-[6px]" style={{ fontSize: "14px", fontWeight: 500 }}>
                                                         <Twitter size={14} className="text-muted-foreground" /> Twitter
                                                     </label>
-                                                    <input 
-                                                        type="text" 
+                                                    <input
+                                                        type="text"
                                                         name="twitter"
                                                         value={profileForm.twitter}
                                                         onChange={handleProfileChange}
-                                                        placeholder="https://twitter.com/..." 
-                                                        className="h-[40px] px-[12px] rounded-[8px] border border-border bg-background text-foreground text-[14px] outline-none focus:border-foreground transition-colors" 
+                                                        placeholder="https://twitter.com/..."
+                                                        className="h-[40px] px-[12px] rounded-[8px] border border-border bg-background text-foreground text-[14px] outline-none focus:border-foreground transition-colors"
                                                     />
                                                 </div>
                                                 {/* Whatsapp */}
@@ -632,13 +690,13 @@ export default function DashboardTabs({ activeTab }: DashboardTabsProps) {
                                                     <label className="text-foreground flex items-center gap-[6px]" style={{ fontSize: "14px", fontWeight: 500 }}>
                                                         <MessageCircle size={14} className="text-muted-foreground" /> Whatsapp
                                                     </label>
-                                                    <input 
-                                                        type="text" 
+                                                    <input
+                                                        type="text"
                                                         name="whatsapp"
                                                         value={profileForm.whatsapp}
                                                         onChange={handleProfileChange}
-                                                        placeholder="+1234567890" 
-                                                        className="h-[40px] px-[12px] rounded-[8px] border border-border bg-background text-foreground text-[14px] outline-none focus:border-foreground transition-colors" 
+                                                        placeholder="+1234567890"
+                                                        className="h-[40px] px-[12px] rounded-[8px] border border-border bg-background text-foreground text-[14px] outline-none focus:border-foreground transition-colors"
                                                     />
                                                 </div>
                                                 {/* Telegram */}
@@ -646,13 +704,13 @@ export default function DashboardTabs({ activeTab }: DashboardTabsProps) {
                                                     <label className="text-foreground flex items-center gap-[6px]" style={{ fontSize: "14px", fontWeight: 500 }}>
                                                         <Send size={14} className="text-muted-foreground" /> Telegram
                                                     </label>
-                                                    <input 
-                                                        type="text" 
+                                                    <input
+                                                        type="text"
                                                         name="telegram"
                                                         value={profileForm.telegram}
                                                         onChange={handleProfileChange}
-                                                        placeholder="https://t.me/..." 
-                                                        className="h-[40px] px-[12px] rounded-[8px] border border-border bg-background text-foreground text-[14px] outline-none focus:border-foreground transition-colors" 
+                                                        placeholder="https://t.me/..."
+                                                        className="h-[40px] px-[12px] rounded-[8px] border border-border bg-background text-foreground text-[14px] outline-none focus:border-foreground transition-colors"
                                                     />
                                                 </div>
                                                 {/* Linkedin */}
@@ -660,13 +718,13 @@ export default function DashboardTabs({ activeTab }: DashboardTabsProps) {
                                                     <label className="text-foreground flex items-center gap-[6px]" style={{ fontSize: "14px", fontWeight: 500 }}>
                                                         <Linkedin size={14} className="text-muted-foreground" /> Linkedin
                                                     </label>
-                                                    <input 
-                                                        type="text" 
+                                                    <input
+                                                        type="text"
                                                         name="linkedin"
                                                         value={profileForm.linkedin}
                                                         onChange={handleProfileChange}
-                                                        placeholder="https://linkedin.com/in/..." 
-                                                        className="h-[40px] px-[12px] rounded-[8px] border border-border bg-background text-foreground text-[14px] outline-none focus:border-foreground transition-colors" 
+                                                        placeholder="https://linkedin.com/in/..."
+                                                        className="h-[40px] px-[12px] rounded-[8px] border border-border bg-background text-foreground text-[14px] outline-none focus:border-foreground transition-colors"
                                                     />
                                                 </div>
                                             </div>
@@ -682,11 +740,23 @@ export default function DashboardTabs({ activeTab }: DashboardTabsProps) {
                                             <div className="flex flex-col gap-[16px]">
                                                 <div className="flex flex-col gap-[8px]">
                                                     <label className="text-foreground" style={{ fontSize: "14px", fontWeight: 500 }}>Your Name</label>
-                                                    <input type="text" defaultValue="Pravin Singh" className="h-[40px] px-[12px] rounded-[8px] border border-border bg-background text-foreground text-[14px] outline-none focus:border-foreground transition-colors" />
+                                                    <input
+                                                        type="text"
+                                                        name="display_name"
+                                                        value={profileForm.display_name}
+                                                        onChange={handleProfileChange}
+                                                        placeholder="Pravin Singh"
+                                                        className="h-[40px] px-[12px] rounded-[8px] border border-border bg-background text-foreground text-[14px] outline-none focus:border-foreground transition-colors"
+                                                    />
                                                 </div>
                                                 <div className="flex flex-col gap-[8px]">
                                                     <label className="text-foreground" style={{ fontSize: "14px", fontWeight: 500 }}>Your Email</label>
-                                                    <input type="email" defaultValue="pravin@example.com" className="h-[40px] px-[12px] rounded-[8px] border border-border bg-background text-foreground text-[14px] outline-none focus:border-foreground transition-colors" />
+                                                    <input
+                                                        type="email"
+                                                        value={user?.email || ""}
+                                                        disabled
+                                                        className="h-[40px] px-[12px] rounded-[8px] border border-border bg-muted text-muted-foreground text-[14px] outline-none cursor-not-allowed opacity-70"
+                                                    />
                                                 </div>
                                             </div>
                                         </div>
@@ -735,35 +805,35 @@ export default function DashboardTabs({ activeTab }: DashboardTabsProps) {
                                             <div className="flex flex-col gap-[16px]">
                                                 <div className="flex flex-col gap-[8px]">
                                                     <label className="text-foreground" style={{ fontSize: "14px", fontWeight: 500 }}>Bank Name</label>
-                                                    <input 
-                                                        type="text" 
+                                                    <input
+                                                        type="text"
                                                         name="bank_name"
                                                         value={paymentForm.bank_name}
                                                         onChange={handlePaymentChange}
-                                                        placeholder="e.g. Chase Bank" 
-                                                        className="h-[40px] px-[12px] rounded-[8px] border border-border bg-background text-foreground text-[14px] outline-none focus:border-foreground transition-colors" 
+                                                        placeholder="e.g. Chase Bank"
+                                                        className="h-[40px] px-[12px] rounded-[8px] border border-border bg-background text-foreground text-[14px] outline-none focus:border-foreground transition-colors"
                                                     />
                                                 </div>
                                                 <div className="flex flex-col gap-[8px]">
                                                     <label className="text-foreground" style={{ fontSize: "14px", fontWeight: 500 }}>Account Number</label>
-                                                    <input 
-                                                        type="text" 
+                                                    <input
+                                                        type="text"
                                                         name="account_number"
                                                         value={paymentForm.account_number}
                                                         onChange={handlePaymentChange}
-                                                        placeholder="e.g. 123456789" 
-                                                        className="h-[40px] px-[12px] rounded-[8px] border border-border bg-background text-foreground text-[14px] outline-none focus:border-foreground transition-colors" 
+                                                        placeholder="e.g. 123456789"
+                                                        className="h-[40px] px-[12px] rounded-[8px] border border-border bg-background text-foreground text-[14px] outline-none focus:border-foreground transition-colors"
                                                     />
                                                 </div>
                                                 <div className="flex flex-col gap-[8px]">
                                                     <label className="text-foreground" style={{ fontSize: "14px", fontWeight: 500 }}>IFSC / Routing Code</label>
-                                                    <input 
-                                                        type="text" 
+                                                    <input
+                                                        type="text"
                                                         name="routing_code"
                                                         value={paymentForm.routing_code}
                                                         onChange={handlePaymentChange}
-                                                        placeholder="e.g. CHASUS33" 
-                                                        className="h-[40px] px-[12px] rounded-[8px] border border-border bg-background text-foreground text-[14px] outline-none focus:border-foreground transition-colors" 
+                                                        placeholder="e.g. CHASUS33"
+                                                        className="h-[40px] px-[12px] rounded-[8px] border border-border bg-background text-foreground text-[14px] outline-none focus:border-foreground transition-colors"
                                                     />
                                                 </div>
                                                 {/* Removed local Save Changes button to move to fixed position */}
@@ -795,9 +865,9 @@ export default function DashboardTabs({ activeTab }: DashboardTabsProps) {
                 </div>
             </div>
 
-            {/* Column Count Slider — Files only, bottom-right */}
-            {activeTab === "Files" && files.length > 0 && isLoaded && selectedIds.size === 0 && (
-                <div className="fixed bottom-[40px] right-[32px] z-40">
+            {/* Column Count Slider — Profiles only, bottom-right */}
+            {activeTab === "Profile" && files.length > 0 && isLoaded && selectedIds.size === 0 && (
+                <div className="fixed bottom-[32px] right-[32px] z-40">
                     <div
                         className="inline-flex items-center rounded-full p-[3px] relative shrink-0"
                         style={{
@@ -813,17 +883,16 @@ export default function DashboardTabs({ activeTab }: DashboardTabsProps) {
                             style={{
                                 width: 32, height: 32,
                                 top: 3, left: 3,
-                                transform: `translateX(${[4,6,8,10].indexOf(colCount) * 32}px)`,
+                                transform: `translateX(${[2, 4, 6, 8, 10].indexOf(colCount) * 32}px)`,
                                 transition: "transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)",
                             }}
                         />
-                        {([4, 6, 8, 10] as const).map((n) => (
+                        {([2, 4, 6, 8, 10] as const).map((n) => (
                             <button
                                 key={n}
                                 onClick={() => handleColChange(n)}
-                                className={`relative flex items-center justify-center rounded-full w-[32px] h-[32px] transition-colors duration-300 cursor-pointer z-10 ${
-                                    colCount === n ? "text-foreground" : "text-muted-foreground hover:text-foreground"
-                                }`}
+                                className={`relative flex items-center justify-center rounded-full w-[32px] h-[32px] transition-colors duration-300 cursor-pointer z-10 ${colCount === n ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+                                    }`}
                                 style={{ fontSize: "12px", fontWeight: 500 }}
                             >
                                 {n}
@@ -834,7 +903,7 @@ export default function DashboardTabs({ activeTab }: DashboardTabsProps) {
             )}
 
             {/* Floating Upload Pill Button */}
-            {activeTab === "Files" && selectedIds.size === 0 && (
+            {activeTab === "Profile" && selectedIds.size === 0 && (
                 <div
                     className="fixed bottom-[40px] left-1/2 -translate-x-1/2 z-40 animate-pop-up"
                 >
@@ -866,20 +935,6 @@ export default function DashboardTabs({ activeTab }: DashboardTabsProps) {
                 </div>
             )}
 
-            {/* Floating New Invoice Pill Button */}
-            {activeTab === "Payment" && (
-                <div
-                    className="fixed bottom-[40px] left-1/2 -translate-x-1/2 z-40 animate-pop-up"
-                >
-                    <button
-                        onClick={() => setInvoiceModalOpen(true)}
-                        className="flex items-center gap-[8px] rounded-full bg-foreground text-background px-[24px] py-[12px] shadow-lg hover:scale-[1.02] active:scale-95 transition-all duration-300 cursor-pointer"
-                    >
-                        <span style={{ fontSize: "14px", fontWeight: 500 }}>New Invoice</span>
-                    </button>
-                </div>
-            )}
-
             {/* Floating Save Profile Pill Button */}
             {activeTab === "Settings" && settingsTab === "Profile" && !isProfileLoading && (
                 <div
@@ -894,6 +949,25 @@ export default function DashboardTabs({ activeTab }: DashboardTabsProps) {
                         {isSavingProfile && <div className="w-[14px] h-[14px] border-2 border-background/20 border-t-background rounded-full animate-spin" />}
                         <span style={{ fontSize: "14px", fontWeight: 500 }}>
                             {isSavingProfile ? "Saving..." : showSavedMessage ? "Saved!" : "Save Profile"}
+                        </span>
+                    </button>
+                </div>
+            )}
+
+            {/* Floating Save Account Pill Button */}
+            {activeTab === "Settings" && settingsTab === "Account" && !isProfileLoading && (
+                <div
+                    className="fixed bottom-[40px] left-1/2 -translate-x-1/2 z-40 animate-pop-up"
+                >
+                    <button
+                        onClick={handleSaveProfile}
+                        disabled={isSavingProfile}
+                        className="flex items-center gap-[8px] rounded-full px-[24px] py-[12px] shadow-lg hover:scale-[1.02] active:scale-95 transition-all duration-300 cursor-pointer bg-foreground text-background"
+                        style={{ minWidth: '140px', justifyContent: 'center' }}
+                    >
+                        {isSavingProfile && <div className="w-[14px] h-[14px] border-2 border-background/20 border-t-background rounded-full animate-spin" />}
+                        <span style={{ fontSize: "14px", fontWeight: 500 }}>
+                            {isSavingProfile ? "Saving..." : showSavedMessage ? "Saved!" : "Save"}
                         </span>
                     </button>
                 </div>
@@ -919,7 +993,7 @@ export default function DashboardTabs({ activeTab }: DashboardTabsProps) {
             )}
 
             {/* Context Action Bar when items are selected */}
-            {selectedIds.size > 0 && activeTab === "Files" && (
+            {selectedIds.size > 0 && activeTab === "Profile" && (
                 <div className="fixed bottom-[40px] left-1/2 -translate-x-1/2 z-50 animate-pop-up">
                     <div className="flex items-center gap-[12px] bg-background border border-border shadow-2xl rounded-full pl-[20px] pr-[8px] py-[8px]">
                         <div className="flex items-center gap-[8px]">
@@ -953,7 +1027,7 @@ export default function DashboardTabs({ activeTab }: DashboardTabsProps) {
             )}
 
             {/* Lasso Selection Box */}
-            {selectionBox && activeTab === "Files" && (
+            {selectionBox && activeTab === "Profile" && (
                 <div
                     className="fixed bg-foreground/10 border border-foreground/30 pointer-events-none z-50 rounded-[4px]"
                     style={{

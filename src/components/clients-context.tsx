@@ -16,6 +16,8 @@ interface ClientsContextType {
     clients: Client[];
     addClient: (name: string, contact: string) => Promise<void>;
     renameClient: (id: string, newName: string) => Promise<void>;
+    updateClient: (id: string, name: string, contact: string) => Promise<void>;
+    deleteClient: (id: string) => Promise<void>;
     removeClient: (id: string) => Promise<void>;
 }
 
@@ -37,6 +39,7 @@ export function ClientsProvider({ children }: { children: ReactNode }) {
                 const { data, error } = await supabase
                     .from("clients")
                     .select("*, client_files(files(url))")
+                    .eq("user_id", user.id)
                     .order("created_at", { ascending: false });
 
                 if (error) throw error;
@@ -101,7 +104,8 @@ export function ClientsProvider({ children }: { children: ReactNode }) {
             const { error } = await supabase
                 .from("clients")
                 .update({ name: newName })
-                .eq("id", id);
+                .eq("id", id)
+                .eq("user_id", user.id);
 
             if (error) {
                 console.error("Failed to rename client:", error);
@@ -115,15 +119,84 @@ export function ClientsProvider({ children }: { children: ReactNode }) {
         [user]
     );
 
+    const updateClient = useCallback(
+        async (id: string, name: string, contact: string) => {
+            if (!user) return;
+
+            const { error } = await supabase
+                .from("clients")
+                .update({ name, contact })
+                .eq("id", id)
+                .eq("user_id", user.id);
+
+            if (error) {
+                console.error("Failed to update client:", error);
+                throw error;
+            }
+
+            setClients((prev) =>
+                prev.map((c) => (c.id === id ? { ...c, name, contact } : c))
+            );
+        },
+        [user]
+    );
+
+    const deleteClient = useCallback(
+        async (id: string) => {
+            if (!user) return;
+
+            // 1. Get all linked file IDs + storage paths
+            const { data: linkedFiles, error: fetchError } = await supabase
+                .from("client_files")
+                .select("file_id, files(id, storage_path)")
+                .eq("client_id", id);
+
+            if (fetchError) {
+                console.error("Failed to fetch linked files:", fetchError);
+                throw fetchError;
+            }
+
+            const fileIds = (linkedFiles || []).map((lf: any) => lf.file_id);
+            const storagePaths = (linkedFiles || [])
+                .map((lf: any) => lf.files?.storage_path)
+                .filter(Boolean);
+
+            // 2. Delete from storage
+            if (storagePaths.length > 0) {
+                await supabase.storage.from("photos").remove(storagePaths);
+            }
+
+            // 3. Delete file rows (cascade will clean client_files)
+            if (fileIds.length > 0) {
+                await supabase.from("files").delete().in("id", fileIds);
+            }
+
+            // 4. Delete client (cascade handles client_files)
+            const { error } = await supabase
+                .from("clients")
+                .delete()
+                .eq("id", id)
+                .eq("user_id", user.id);
+
+            if (error) {
+                console.error("Failed to delete client:", error);
+                throw error;
+            }
+
+            setClients((prev) => prev.filter((c) => c.id !== id));
+        },
+        [user]
+    );
+
     const removeClient = useCallback(
         async (id: string) => {
             if (!user) return;
 
-            // Delete client_files links first, then the client (cascade should handle it but be safe)
             const { error } = await supabase
                 .from("clients")
                 .delete()
-                .eq("id", id);
+                .eq("id", id)
+                .eq("user_id", user.id);
 
             if (error) {
                 console.error("Failed to delete client:", error);
@@ -141,6 +214,8 @@ export function ClientsProvider({ children }: { children: ReactNode }) {
                 clients,
                 addClient,
                 renameClient,
+                updateClient,
+                deleteClient,
                 removeClient,
             }}
         >

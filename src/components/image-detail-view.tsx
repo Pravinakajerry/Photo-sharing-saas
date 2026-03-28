@@ -83,7 +83,7 @@ export default function ImageDetailView({ currentFile, onClose, onNavigate, allF
             .order("created_at", { ascending: true });
 
         if (error) {
-            console.error("Error fetching comments:", error);
+            // Silently fail or handle gracefully without logs
         } else {
             setComments(data || []);
         }
@@ -149,6 +149,23 @@ export default function ImageDetailView({ currentFile, onClose, onNavigate, allF
         }
     };
 
+    const handleDownload = async () => {
+        try {
+            const response = await fetch(currentFile.url);
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = currentFile.name || 'download';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+        } catch (err) {
+            // Silent fail
+        }
+    };
+
     const handleShare = async () => {
         if (!user || shareState !== "idle") return;
         setShareState("sharing");
@@ -203,7 +220,6 @@ export default function ImageDetailView({ currentFile, onClose, onNavigate, allF
             setShareState("copied");
             setTimeout(() => setShareState("idle"), 2000);
         } catch (err) {
-            console.error("Single asset share failed:", err);
             setShareState("error");
             setTimeout(() => setShareState("idle"), 2000);
         }
@@ -228,7 +244,6 @@ export default function ImageDetailView({ currentFile, onClose, onNavigate, allF
             .single();
 
         if (error) {
-            console.error("Error saving comment:", error.message || error);
             alert("Failed to save comment: " + (error.message || "Unknown error"));
         } else {
             setComments(prev => [...prev, data]);
@@ -470,8 +485,13 @@ export default function ImageDetailView({ currentFile, onClose, onNavigate, allF
                             </svg>
                         </button>
 
-                        <button className="px-[48px] h-[48px] rounded-[12px] bg-foreground text-background flex items-center justify-center transition-transform duration-300 hover:scale-105 active:scale-95 cursor-pointer shadow-lg" style={{ fontSize: "15px", fontWeight: 500 }}>
-                            Pay
+                        <button 
+                            onClick={handleDownload}
+                            className="px-[48px] h-[48px] rounded-[12px] bg-foreground text-background flex items-center justify-center transition-transform duration-300 hover:scale-105 active:scale-95 cursor-pointer shadow-lg" 
+                            style={{ fontSize: "15px", fontWeight: 500 }}
+                        >
+                            <Download size={18} className="mr-2" />
+                            Download
                         </button>
 
                         <button

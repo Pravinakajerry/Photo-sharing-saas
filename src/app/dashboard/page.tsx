@@ -19,11 +19,10 @@ export default function DashboardPage() {
                 document.getElementById("dashboard-search-input")?.focus();
             }
 
-            if (e.key === "1") document.getElementById("header-tab-files")?.click();
+            if (e.key === "1") document.getElementById("header-tab-profiles")?.click();
             if (e.key === "2") document.getElementById("header-tab-clients")?.click();
-            if (e.key === "3") document.getElementById("header-tab-payment")?.click();
-            if (e.key === "4") document.getElementById("header-tab-settings")?.click();
-            if (e.key === "5") document.getElementById("header-storage-toggle")?.click();
+            if (e.key === "3") document.getElementById("header-tab-settings")?.click();
+            if (e.key === "4") document.getElementById("header-storage-toggle")?.click();
         };
 
         window.addEventListener("keydown", handleKeyDown);

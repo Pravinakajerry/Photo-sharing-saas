@@ -5,15 +5,25 @@ import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
 import { useFiles, FileItem } from "@/hooks/use-files";
 import { useComments } from "@/hooks/use-comments";
-import PaymentModal from "@/components/payment-modal";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Download } from "lucide-react";
 
-type PanelView = "info" | "comment" | "version" | "logs" | null;
+type PanelView = "info" | "comment" | "version" | null;
 
 export default function ImageDetailClient() {
     const params = useParams();
     const router = useRouter();
+    const [backUrl, setBackUrl] = useState("/dashboard");
     const [localFileId, setLocalFileId] = useState<string>(params.id as string);
+
+    // Read & clear the back URL from localStorage on mount
+    useEffect(() => {
+        const stored = localStorage.getItem("img.backUrl");
+        if (stored) {
+            setBackUrl(stored);
+            localStorage.removeItem("img.backUrl");
+        }
+    }, []);
 
     // Sync state if user uses browser back/forward buttons
     useEffect(() => {
@@ -24,7 +34,6 @@ export default function ImageDetailClient() {
     const { files, isLoaded, addFiles } = useFiles();
     const { comments, addComment } = useComments(fileId);
     const [activePanel, setActivePanel] = useState<PanelView>(null);
-    const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
     const [newComment, setNewComment] = useState("");
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -42,6 +51,24 @@ export default function ImageDetailClient() {
         }
     };
 
+    const handleDownload = async () => {
+        if (!currentFile) return;
+        try {
+            const response = await fetch(currentFile.url);
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = currentFile.name || 'download';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+        } catch (err) {
+            // Nil
+        }
+    };
+
     // Keyboard navigation
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -49,12 +76,11 @@ export default function ImageDetailClient() {
 
             if (e.key === "ArrowLeft" || e.key === "ArrowUp") navigateTo(currentIndex - 1);
             else if (e.key === "ArrowRight" || e.key === "ArrowDown") navigateTo(currentIndex + 1);
-            else if (e.key === "Escape") router.push("/dashboard");
+            else if (e.key === "Escape") router.push(backUrl);
             // Panel toggles
             else if (e.key.toLowerCase() === "i") setActivePanel(prev => prev === "info" ? null : "info");
             else if (e.key.toLowerCase() === "c") setActivePanel(prev => prev === "comment" ? null : "comment");
             else if (e.key.toLowerCase() === "v") setActivePanel(prev => prev === "version" ? null : "version");
-            else if (e.key.toLowerCase() === "l") setActivePanel(prev => prev === "logs" ? null : "logs");
         };
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
@@ -67,14 +93,14 @@ export default function ImageDetailClient() {
             addFiles(e.target.files);
             // Optionally clear the input
             if (fileInputRef.current) fileInputRef.current.value = "";
-            router.push("/dashboard");
+            router.push(backUrl);
         }
     };
 
     // If we can't find the file (e.g. page refreshed and in-memory files lost), return to dashboard
     useEffect(() => {
         if (isLoaded && !currentFile && files.length === 0) {
-            router.push("/dashboard");
+            router.push(backUrl);
         }
     }, [currentFile, files.length, isLoaded, router]);
 
@@ -114,7 +140,7 @@ export default function ImageDetailClient() {
                     <Tooltip>
                         <TooltipTrigger asChild>
                             <button
-                                onClick={() => router.push("/dashboard")}
+                                onClick={() => router.push(backUrl)}
                                 className="w-[36px] h-[36px] rounded-full bg-transparent hover:bg-muted text-foreground transition-colors flex items-center justify-center cursor-pointer"
                             >
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -279,21 +305,6 @@ export default function ImageDetailClient() {
                                     </button>
                                 </>
                             )}
-                            {activePanel === "logs" && (
-                                <>
-                                    <h3 className="text-foreground mb-4 flex items-center gap-[8px]" style={{ fontSize: "16px", fontWeight: 600 }}>
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                            <line x1="4" y1="6" x2="20" y2="6"></line>
-                                            <line x1="4" y1="12" x2="20" y2="12"></line>
-                                            <line x1="4" y1="18" x2="14" y2="18"></line>
-                                        </svg>
-                                        Logs
-                                    </h3>
-                                    <div className="flex-1 flex items-center justify-center">
-                                        <p className="text-muted-foreground/60 text-center" style={{ fontSize: "14px" }}>No logs available.</p>
-                                    </div>
-                                </>
-                            )}
                         </div>
                     )}
 
@@ -348,23 +359,6 @@ export default function ImageDetailClient() {
                             </TooltipContent>
                         </Tooltip>
 
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <button
-                                    onClick={() => setActivePanel(activePanel === "logs" ? null : "logs")}
-                                    className={`w-full aspect-square flex items-center justify-center border-t border-border focus:outline-none transition-colors cursor-pointer ${activePanel === "logs" ? "bg-foreground text-background" : "text-foreground hover:bg-muted"}`}
-                                >
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                        <line x1="4" y1="6" x2="20" y2="6"></line>
-                                        <line x1="4" y1="12" x2="20" y2="12"></line>
-                                        <line x1="4" y1="18" x2="14" y2="18"></line>
-                                    </svg>
-                                </button>
-                            </TooltipTrigger>
-                            <TooltipContent side="left">
-                                <p>Logs (l)</p>
-                            </TooltipContent>
-                        </Tooltip>
 
                         <Tooltip>
                             <TooltipTrigger asChild>
@@ -398,11 +392,12 @@ export default function ImageDetailClient() {
                     </button>
 
                     <button
-                        onClick={() => setIsPaymentModalOpen(true)}
+                        onClick={handleDownload}
                         className="px-[48px] h-[48px] rounded-[12px] bg-foreground text-background flex items-center justify-center transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer shadow-lg"
                         style={{ fontSize: "15px", fontWeight: 500 }}
                     >
-                        Pay
+                        <Download size={18} className="mr-2" />
+                        Download
                     </button>
 
                     <button
@@ -416,11 +411,6 @@ export default function ImageDetailClient() {
                     </button>
                 </div>
 
-                {/* Payment Modal */}
-                <PaymentModal
-                    isOpen={isPaymentModalOpen}
-                    onClose={() => setIsPaymentModalOpen(false)}
-                />
 
             </div>
         </TooltipProvider>

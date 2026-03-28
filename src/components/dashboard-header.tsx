@@ -1,12 +1,16 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { SafeImage as Image } from "@/components/ui/safe-image";
-import { Tab, tabs } from "@/components/dashboard-tabs";
+import { Tab, tabs } from "@/components/dashboard-context";
 import { useDashboard } from "@/components/dashboard-context";
 import { useClients } from "@/hooks/use-clients";
+import { useFiles } from "@/hooks/use-files";
 import { useRouter } from "next/navigation";
-import { Share, ChevronDown, Pencil, Trash2, Search, Check } from "lucide-react";
+import {
+    Share, ChevronDown, Pencil, Trash2, Search, Check,
+    LogOut, MessageSquare, Settings, ImageIcon, Users, ArrowUpRight,
+} from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/components/auth-context";
 
@@ -18,23 +22,51 @@ interface DashboardHeaderProps {
     isManagerOpen?: boolean;
 }
 
-export default function DashboardHeader({ activeTab, setActiveTab, isVisible = true, onToggleManager, isManagerOpen = false }: DashboardHeaderProps) {
+// ─── Result types ────────────────────────────────────────────────────────────
+type ResultKind = "asset" | "client" | "action";
+
+interface SearchResult {
+    id: string;
+    kind: ResultKind;
+    label: string;
+    sub?: string;
+    thumbnailUrl?: string;
+    onSelect: () => void;
+}
+
+// ─── Component ───────────────────────────────────────────────────────────────
+export default function DashboardHeader({
+    activeTab,
+    setActiveTab,
+    isVisible = true,
+    onToggleManager,
+    isManagerOpen = false,
+}: DashboardHeaderProps) {
     const activeIndex = tabs.indexOf(activeTab);
     const { clientPageName, clientPageId, setClientPageName } = useDashboard();
-    const { renameClient, removeClient } = useClients();
-    const { user } = useAuth();
+    const { renameClient, removeClient, clients } = useClients();
+    const { files } = useFiles();
+    const { user, signOut } = useAuth();
     const router = useRouter();
 
+    // ── Existing state ──
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [isRenaming, setIsRenaming] = useState(false);
     const [renameValue, setRenameValue] = useState("");
     const [isSearchExpanded, setIsSearchExpanded] = useState(false);
     const [shareState, setShareState] = useState<"idle" | "copying" | "copied" | "error">("idle");
+
+    // ── Search / palette state ──
+    const [searchQuery, setSearchQuery] = useState("");
+    const [isPaletteOpen, setIsPaletteOpen] = useState(false);
+    const [highlightedIndex, setHighlightedIndex] = useState(0);
+
     const dropdownRef = useRef<HTMLDivElement>(null);
     const renameInputRef = useRef<HTMLInputElement>(null);
     const searchContainerRef = useRef<HTMLDivElement>(null);
+    const searchInputRef = useRef<HTMLInputElement>(null);
 
-    // Close dropdown on outside click
+    // ── Close palette & dropdown on outside click ──
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
             const target = e.target as Node;
@@ -44,13 +76,15 @@ export default function DashboardHeader({ activeTab, setActiveTab, isVisible = t
             }
             if (searchContainerRef.current && !searchContainerRef.current.contains(target)) {
                 setIsSearchExpanded(false);
+                setIsPaletteOpen(false);
+                searchInputRef.current?.blur();
             }
         };
         document.addEventListener("mousedown", handleClickOutside);
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    // Auto-focus rename input
+    // ── Auto-focus rename input ──
     useEffect(() => {
         if (isRenaming && renameInputRef.current) {
             renameInputRef.current.focus();
@@ -58,6 +92,133 @@ export default function DashboardHeader({ activeTab, setActiveTab, isVisible = t
         }
     }, [isRenaming]);
 
+    // ── Build flat results list ──
+    const MAX_PER_SECTION = 5;
+
+    const allResults = useMemo<SearchResult[]>(() => {
+        const q = searchQuery.toLowerCase().trim();
+
+        // Assets
+        const assetResults: SearchResult[] = files
+            .filter((f) => !q || f.name.toLowerCase().includes(q))
+            .slice(0, MAX_PER_SECTION)
+            .map((f) => ({
+                id: `asset-${f.id}`,
+                kind: "asset",
+                label: f.name,
+                thumbnailUrl: f.url,
+                onSelect: () => {
+                    router.push(`/dashboard/image/${f.id}`);
+                    closePalette();
+                },
+            }));
+
+        // Clients
+        const clientResults: SearchResult[] = clients
+            .filter((c) => !q || c.name.toLowerCase().includes(q))
+            .slice(0, MAX_PER_SECTION)
+            .map((c) => ({
+                id: `client-${c.id}`,
+                kind: "client",
+                label: c.name,
+                sub: c.contact,
+                onSelect: () => {
+                    router.push(`/dashboard/client/${c.id}`);
+                    closePalette();
+                },
+            }));
+
+        // Static actions
+        const staticActions: Array<Omit<SearchResult, "id">> = [
+            {
+                kind: "action",
+                label: "Home / Profile",
+                sub: "View your personal profile and assets",
+                onSelect: () => {
+                    setActiveTab("Profile");
+                    closePalette();
+                },
+            },
+            {
+                kind: "action",
+                label: "Settings",
+                sub: "Manage your account settings",
+                onSelect: () => {
+                    setActiveTab("Settings");
+                    closePalette();
+                },
+            },
+            {
+                kind: "action",
+                label: "Logout",
+                sub: "Sign out of your account",
+                onSelect: async () => {
+                    closePalette();
+                    await signOut();
+                    router.push("/");
+                },
+            },
+            {
+                kind: "action",
+                label: "Feedback",
+                sub: "Send us your feedback",
+                onSelect: () => { closePalette(); /* no-op */ },
+            },
+        ];
+
+        const actionResults: SearchResult[] = staticActions
+            .filter((a) => !q || a.label.toLowerCase().includes(q) || (a.sub || "").toLowerCase().includes(q))
+            .map((a, i) => ({ ...a, id: `action-${i}` }));
+
+        return [...assetResults, ...clientResults, ...actionResults];
+    }, [searchQuery, files, clients, signOut, router]);
+
+    const groupedResults = useMemo(() => ({
+        assets: allResults.filter((r) => r.kind === "asset"),
+        clients: allResults.filter((r) => r.kind === "client"),
+        actions: allResults.filter((r) => r.kind === "action"),
+    }), [allResults]);
+
+    const hasResults = allResults.length > 0;
+
+    // ── Reset highlight when results change ──
+    useEffect(() => {
+        setHighlightedIndex(0);
+    }, [allResults]);
+
+    const closePalette = useCallback(() => {
+        setIsPaletteOpen(false);
+        setSearchQuery("");
+        setIsSearchExpanded(false);
+        searchInputRef.current?.blur();
+    }, []);
+
+    const openPalette = useCallback(() => {
+        setIsPaletteOpen(true);
+        setTimeout(() => searchInputRef.current?.focus(), 50);
+    }, []);
+
+    // ── Keyboard navigation ──
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === "Escape") {
+            closePalette();
+            return;
+        }
+        if (e.key === "ArrowDown") {
+            e.preventDefault();
+            setHighlightedIndex((prev) => Math.min(prev + 1, allResults.length - 1));
+        }
+        if (e.key === "ArrowUp") {
+            e.preventDefault();
+            setHighlightedIndex((prev) => Math.max(prev - 1, 0));
+        }
+        if (e.key === "Enter") {
+            e.preventDefault();
+            allResults[highlightedIndex]?.onSelect();
+        }
+    };
+
+    // ─── Rename / delete handlers ─────────────────────────────────────────
     const handleRenameStart = () => {
         setRenameValue(clientPageName || "");
         setIsRenaming(true);
@@ -80,6 +241,76 @@ export default function DashboardHeader({ activeTab, setActiveTab, isVisible = t
         setIsDropdownOpen(false);
     };
 
+    // ─── Result row (plain function, NOT a component, to avoid remount-on-rerender) ──
+    const renderResultRow = (result: SearchResult, globalIndex: number) => {
+        const isHighlighted = highlightedIndex === globalIndex;
+        return (
+            <button
+                key={result.id}
+                onMouseEnter={() => setHighlightedIndex(globalIndex)}
+                onMouseDown={(e) => e.preventDefault()} // keep input focused so onClick fires
+                onClick={result.onSelect}
+                className={`w-full flex items-center gap-[12px] px-[12px] py-[8px] text-left transition-colors cursor-pointer rounded-[8px] ${isHighlighted ? "bg-[#e8e7e5]" : "hover:bg-[#f0efed]"}`}
+            >
+                {/* Icon / Thumbnail */}
+                <div className="flex-shrink-0 w-[32px] h-[32px] rounded-[6px] overflow-hidden flex items-center justify-center bg-[#e8e7e5]">
+                    {result.kind === "asset" && result.thumbnailUrl ? (
+                        <Image
+                            src={result.thumbnailUrl}
+                            alt={result.label}
+                            width={32}
+                            height={32}
+                            className="w-full h-full object-cover"
+                        />
+                    ) : result.kind === "asset" ? (
+                        <ImageIcon size={14} className="text-muted-foreground" />
+                    ) : result.kind === "client" ? (
+                        <Users size={14} className="text-muted-foreground" />
+                    ) : result.label === "Logout" ? (
+                        <LogOut size={14} className="text-muted-foreground" />
+                    ) : result.label === "Feedback" ? (
+                        <MessageSquare size={14} className="text-muted-foreground" />
+                    ) : (
+                        <Settings size={14} className="text-muted-foreground" />
+                    )}
+                </div>
+
+                {/* Text */}
+                <div className="flex-1 min-w-0">
+                    <div className="text-foreground truncate" style={{ fontSize: "13px", fontWeight: 500 }}>
+                        {result.label}
+                    </div>
+                    {result.sub && (
+                        <div className="text-muted-foreground truncate" style={{ fontSize: "12px" }}>
+                            {result.sub}
+                        </div>
+                    )}
+                </div>
+
+                <ArrowUpRight size={13} className="flex-shrink-0 text-muted-foreground opacity-40" />
+            </button>
+        );
+    };
+
+    // ── Build ordered rows for global index tracking ──
+    let globalRowIndex = 0;
+    const renderSection = (label: string, items: SearchResult[]) => {
+        if (items.length === 0) return null;
+        const startIndex = globalRowIndex;
+        globalRowIndex += items.length;
+        return (
+            <div key={label}>
+                <div
+                    className="px-[12px] pt-[10px] pb-[4px] text-muted-foreground"
+                    style={{ fontSize: "11px", fontWeight: 500, letterSpacing: "0.04em", textTransform: "uppercase" }}
+                >
+                    {label}
+                </div>
+                {items.map((result, i) => renderResultRow(result, startIndex + i))}
+            </div>
+        );
+    };
+
     return (
         <header
             className="fixed top-0 z-50 w-full border-b border-border bg-background"
@@ -91,7 +322,7 @@ export default function DashboardHeader({ activeTab, setActiveTab, isVisible = t
         >
             <div className="flex items-center justify-between px-[24px] h-[73px]">
 
-                {/* Left: Merged Profile & Search Bar */}
+                {/* Left: Profile + Search */}
                 <div className="flex-1 max-w-[320px] relative z-20">
                     <div
                         ref={searchContainerRef}
@@ -100,12 +331,11 @@ export default function DashboardHeader({ activeTab, setActiveTab, isVisible = t
                         onClick={() => {
                             if (!isSearchExpanded && window.innerWidth < 1220) {
                                 setIsSearchExpanded(true);
-                                setTimeout(() => {
-                                    document.getElementById("dashboard-search-input")?.focus();
-                                }, 100);
                             }
+                            openPalette();
                         }}
                     >
+                        {/* Avatar */}
                         <button className="flex h-[38px] w-[38px] flex-shrink-0 overflow-hidden rounded-full ring-1 ring-border transition-all duration-300 hover:ring-foreground/30 z-10 cursor-pointer">
                             <Image
                                 src="/profile-photo-v2.jpg"
@@ -116,41 +346,90 @@ export default function DashboardHeader({ activeTab, setActiveTab, isVisible = t
                             />
                         </button>
 
-                        {/* Search Icon (Only visible on small screens when collapsed) */}
+                        {/* Search icon – small screens collapsed */}
                         <div className={`flex items-center justify-center flex-shrink-0 transition-all duration-300 ${isSearchExpanded ? "w-0 opacity-0 min-[1220px]:hidden" : "w-[38px] opacity-100 min-[1220px]:w-0 min-[1220px]:opacity-0"
                             }`}>
                             <Search size={18} className="text-muted-foreground mr-[4px]" />
                         </div>
 
-                        {/* Search Input */}
+                        {/* Search input */}
                         <input
+                            ref={searchInputRef}
                             id="dashboard-search-input"
                             type="text"
                             placeholder="Search everything"
+                            value={searchQuery}
+                            onChange={(e) => {
+                                setSearchQuery(e.target.value);
+                                if (!isPaletteOpen) setIsPaletteOpen(true);
+                            }}
+                            onFocus={() => setIsPaletteOpen(true)}
+                            onKeyDown={handleKeyDown}
                             className={`bg-transparent text-foreground placeholder:text-muted-foreground outline-none transition-all duration-300 ${isSearchExpanded ? "flex-1 px-[12px] w-full min-w-[100px] opacity-100" : "w-0 px-0 opacity-0 min-[1220px]:flex-1 min-[1220px]:px-[12px] min-[1220px]:w-full min-[1220px]:opacity-100"
                                 }`}
                             style={{ fontSize: "14px" }}
                         />
                     </div>
+
+                    {/* Command Palette Dropdown */}
+                    {isPaletteOpen && (
+                        <div
+                            className="absolute top-full mt-[8px] left-0 w-full min-w-[280px] max-w-[360px] bg-background border border-border rounded-[14px] shadow-xl overflow-hidden animate-blur-fade-in z-50"
+                            style={{ boxShadow: "0 8px 32px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06)" }}
+                        >
+                            {/* Inner scroll container */}
+                            <div className="max-h-[420px] overflow-y-auto p-[6px]">
+                                {hasResults ? (
+                                    <>
+                                        {renderSection("Assets", groupedResults.assets)}
+                                        {renderSection("Clients", groupedResults.clients)}
+                                        {renderSection("Actions", groupedResults.actions)}
+                                    </>
+                                ) : (
+                                    <div
+                                        className="flex flex-col items-center justify-center py-[32px] text-muted-foreground gap-[8px]"
+                                    >
+                                        <Search size={20} className="opacity-40" />
+                                        <span style={{ fontSize: "13px" }}>
+                                            No results for &ldquo;{searchQuery}&rdquo;
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Footer hint */}
+                            <div className="border-t border-border px-[14px] py-[8px] flex items-center gap-[12px]">
+                                <span className="text-muted-foreground" style={{ fontSize: "11px" }}>
+                                    <kbd className="font-mono bg-[#e8e7e5] rounded px-[4px] py-[1px] mr-[4px]">↑↓</kbd>navigate
+                                </span>
+                                <span className="text-muted-foreground" style={{ fontSize: "11px" }}>
+                                    <kbd className="font-mono bg-[#e8e7e5] rounded px-[4px] py-[1px] mr-[4px]">↵</kbd>open
+                                </span>
+                                <span className="text-muted-foreground" style={{ fontSize: "11px" }}>
+                                    <kbd className="font-mono bg-[#e8e7e5] rounded px-[4px] py-[1px] mr-[4px]">Esc</kbd>close
+                                </span>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
-                {/* Center: Tabs OR Client Page Pills */}
+                {/* Center: Tabs OR Client breadcrumb */}
                 <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none">
                     {clientPageName ? (
                         <div className="inline-flex items-center gap-[12px] pointer-events-auto animate-blur-fade-in">
-                            {/* Files breadcrumb (back) */}
                             <button
-                                onClick={() => router.push("/dashboard")}
-                                className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer px-[8px] py-[4px] -mx-[8px] rounded-[6px] hover:bg-muted/50"
+                                onClick={() => {
+                                    setActiveTab("Clients");
+                                    router.push("/dashboard");
+                                }}
+                                className="flex items-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer px-[8px] py-[4px] -mx-[8px] rounded-[6px] hover:bg-muted/50"
                                 style={{ fontSize: "14px", fontWeight: 400 }}
                             >
-                                Files
+                                All Clients
                             </button>
 
-                            {/* Separator */}
                             <span className="text-muted-foreground/50" style={{ fontSize: "14px" }}>/</span>
 
-                            {/* Client Name (with dropdown) */}
                             <div className="relative" ref={dropdownRef}>
                                 {isRenaming ? (
                                     <input
@@ -176,7 +455,6 @@ export default function DashboardHeader({ activeTab, setActiveTab, isVisible = t
                                     </button>
                                 )}
 
-                                {/* Dropdown */}
                                 {isDropdownOpen && (
                                     <div className="absolute top-full mt-[8px] left-1/2 -translate-x-1/2 bg-background border border-border rounded-[12px] shadow-xl overflow-hidden min-w-[160px] animate-blur-fade-in z-50">
                                         <button
@@ -238,10 +516,10 @@ export default function DashboardHeader({ activeTab, setActiveTab, isVisible = t
                     {clientPageName ? (
                         <button
                             className={`pointer-events-auto flex items-center justify-center gap-[8px] rounded-full px-[16px] py-[6px] transition-all duration-300 cursor-pointer ${shareState === "copied"
-                                    ? "bg-foreground text-background"
-                                    : shareState === "error"
-                                        ? "bg-destructive text-background"
-                                        : "bg-[#e8e7e5] text-foreground hover:bg-[#dcdbd9]"
+                                ? "bg-foreground text-background"
+                                : shareState === "error"
+                                    ? "bg-destructive text-background"
+                                    : "bg-[#e8e7e5] text-foreground hover:bg-[#dcdbd9]"
                                 }`}
                             style={{ fontSize: "14px", fontWeight: 500 }}
                             disabled={shareState === "copying"}
@@ -249,7 +527,6 @@ export default function DashboardHeader({ activeTab, setActiveTab, isVisible = t
                                 if (!clientPageId || !user || shareState !== "idle") return;
                                 setShareState("copying");
                                 try {
-                                    // Upsert share token
                                     const { data, error } = await supabase
                                         .from("client_shares")
                                         .upsert(

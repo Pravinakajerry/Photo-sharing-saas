@@ -43,6 +43,7 @@ export function FilesProvider({ children }: { children: React.ReactNode }) {
                 const { data, error } = await supabase
                     .from("files")
                     .select("*")
+                    .eq("user_id", user.id)
                     .order("created_at", { ascending: false });
 
                 if (error) throw error;
@@ -152,7 +153,7 @@ export function FilesProvider({ children }: { children: React.ReactNode }) {
                 }
 
                 // Delete from database (comments will cascade)
-                await supabase.from("files").delete().in("id", itemIds);
+                await supabase.from("files").delete().in("id", itemIds).eq("user_id", user.id);
 
                 // Wait a tiny bit more for the animation to finish
                 setTimeout(() => {
@@ -183,7 +184,8 @@ export function FilesProvider({ children }: { children: React.ReactNode }) {
             const { error } = await supabase
                 .from("files")
                 .update({ name: newName })
-                .eq("id", id);
+                .eq("id", id)
+                .eq("user_id", user.id);
 
             if (error) {
                 console.error("Failed to rename file:", error);
