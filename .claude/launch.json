@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Next.js Dev",
+      "runtimeExecutable": "node_modules/.bin/next",
+      "runtimeArgs": ["dev"],
+      "port": 3000
+    }
+  ]
+}
